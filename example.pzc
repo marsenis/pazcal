@@ -1,0 +1,16 @@
+PROG hello() {
+   int hello_world;
+   'a' '1' '\n' '\"' '&'
+   "abc" "Route66" "Hello World\n" "Name: \t\"DouglasAdams\"\nValue:\t42\n"
+   
+   /*** This is a multiple line comment
+    *** and it continues here
+    ***/
+    "This is a string on
+      two lines."
+   WRITE(0042e16+34, hello_world);
+   /* hello /* test */  */
+   if (2++ > 3)
+      test();
+   else return;
+}
