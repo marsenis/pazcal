@@ -114,8 +114,7 @@ ESCAPESEQ (\\n|\\t|\\r|\\0|\\\\|\\\'|\\\")
 [ \t]    { /* empty */ }
 \/\/.*   { /* empty */ } /* one line comments */
 
-\'({PRINTABLE}|{ESCAPESEQ})\'  { return T_char_const; }
-
+\'({PRINTABLE}|{ESCAPESEQ})\'    { return T_char_const; }
 \"([^\\\"\n]|{ESCAPESEQ})*\"     { return T_string_const; }
 
 "\/*"            { BEGIN(COMMENT); }
@@ -127,9 +126,8 @@ ESCAPESEQ (\\n|\\t|\\r|\\0|\\\\|\\\'|\\\")
 \r   { /* empty */ }
 \n   { linecount++; }
 
-.        { fprintf(stderr, "[Lexical error]:%d unmatched character '%c'\n", linecount, yytext[0]); exit(1); }
-
-<<EOF>> { return T_eof; }
+.        { fprintf(stderr, "Line %d\t[Lexical error] unmatched character '%c'\n", linecount, yytext[0]); exit(1); }
+<<EOF>>  { return T_eof; }
 
 %%
 
@@ -137,7 +135,7 @@ int main() {
    int t;
 
    while ( (t = yylex()) != T_eof) {
-      printf("%d: token ID: %d, yytext: %s\n", linecount, t, yytext);
+      printf("Line %d\ttoken ID: %d\tlexeme: %s\n", linecount, t, yytext);
    }
 
    return 0;

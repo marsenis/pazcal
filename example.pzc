@@ -6,8 +6,8 @@ PROG hello() {
    /*** This is a multiple line comment
     *** and it continues here
     ***/
-    "This is a string on
-      two lines."
+    "This is a string
+         on two lines."
    WRITE(0042e16+34, hello_world);
    /* hello /* test */  */
    if (2++ > 3)

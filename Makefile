@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-O2 -Wall -g
+CFLAGS=-O2
 
 pazcal: pazcal.lex.o
 		  $(CC) $(CFLAGS) -o pazcal pazcal.lex.o -lfl
