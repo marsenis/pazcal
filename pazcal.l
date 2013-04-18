@@ -1,6 +1,12 @@
 /* TODO: bison should take care of token ids */
 %{
+#include <stdio.h>
+
+#include "error.h"
+#include "pazcal.tab.h"
+
 #define T_eof          0
+/*
 #define T_and          257
 #define T_bool         258
 #define T_break        259
@@ -48,8 +54,10 @@
 #define T_float_const  300
 #define T_char_const   301
 #define T_string_const 302
+*/
 
 int linecount = 1;
+char filename[] = "stdin";
 %}
 
 D         [0-9]
@@ -81,6 +89,12 @@ ESCAPESEQ (\\n|\\t|\\r|\\0|\\\\|\\\'|\\\")
 "if"            { return T_if       ;}
 "int"           { return T_int      ;}
 "MOD"           { return T_MOD      ;}
+"NEXT"          { return T_NEXT     ;}
+"not"           { return T_not      ;}
+"or"            { return T_or       ;}
+"PROC"          { return T_PROC     ;}
+"PROGRAM"       { return T_PROGRAM  ;}
+"REAL"          { return T_REAL     ;}
 "return"        { return T_return   ;}
 "STEP"          { return T_STEP     ;}
 "switch"        { return T_switch   ;}
@@ -115,7 +129,7 @@ ESCAPESEQ (\\n|\\t|\\r|\\0|\\\\|\\\'|\\\")
 \/\/.*   { /* empty */ } /* one line comments */
 
 \'({PRINTABLE}|{ESCAPESEQ})\'    { return T_char_const; }
-\"([^\\\"\n]|{ESCAPESEQ})*\"     { return T_string_const; }
+\"([^\\\"\n]|{ESCAPESEQ})*\"     { return T_string_literal; }
 
 "\/*"            { BEGIN(COMMENT); }
 <COMMENT>"*\/"   { BEGIN(INITIAL); }
@@ -126,11 +140,12 @@ ESCAPESEQ (\\n|\\t|\\r|\\0|\\\\|\\\'|\\\")
 \r   { /* empty */ }
 \n   { linecount++; }
 
-.        { fprintf(stderr, "Line %d\t[Lexical error] unmatched character '%c'\n", linecount, yytext[0]); exit(1); }
+.        { error("Line %d\t[Lexical error] unmatched character '%c'\n", linecount, yytext[0]); exit(1); }
 <<EOF>>  { return T_eof; }
 
 %%
 
+/*
 int main() {
    int t;
 
@@ -140,3 +155,4 @@ int main() {
 
    return 0;
 }
+*/

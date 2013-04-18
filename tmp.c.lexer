@@ -1,0 +1,15 @@
+#include <stdio.h>
+#define T_eof 0
+
+extern int linecount;
+extern char *yytext;
+
+int main() {
+   int t;
+
+   while ( (t = yylex()) != T_eof) {
+      printf("Line %d\ttoken ID: %d\tlexeme: %s\n", linecount, t, yytext);
+   }
+
+   return 0;
+}
