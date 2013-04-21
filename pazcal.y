@@ -58,17 +58,23 @@
 %token T_char_const
 %token T_string_literal
 
-/*%right "else"
-%left "break"*/
 %nonassoc '=' "++" "--" "+=" "-=" "*=" "/=" "%="
 
-%left '!' "not"
-%left '*' '/' '%' "MOD"
-%left '+' '-'
-%left '<' '>' "<=" ">="
-%left "==" "!="
-%left "&&" "and"
+/* Fix dangling else */
+%nonassoc ')'
+%nonassoc "else"
+
+/* Fix break shift/reduce conflict */
+%nonassoc "break"
+%nonassoc SWITCH_BRK
+
 %left "||" "or"
+%left "&&" "and"
+%left "==" "!="
+%left '<' '>' "<=" ">="
+%left '+' '-'
+%left '*' '/' '%' "MOD"
+%left UNOP
 
    /* %left UMINUS UPLUS */
 
@@ -110,7 +116,7 @@ const_expr : expr ;
 
    /* TODO: should make flex consider '%' and 'MOD' as equal tokens as well as '&&' "AND" '||' "OR" */
 expr : T_int_const | T_float_const | T_char_const | T_string_literal
-     | "true" | "false" | '(' expr ')' | l_value | call /* unop expr */
+     | "true" | "false" | '(' expr ')' | l_value | call | unop expr %prec UNOP
      | expr '+' expr | expr '-' expr | expr '*' expr | expr '/' expr
      | expr '%' expr | expr "MOD" expr | expr "==" expr | expr "!=" expr
      | expr '<' expr | expr '>' expr | expr "<=" expr | expr ">=" expr
@@ -119,8 +125,7 @@ expr : T_int_const | T_float_const | T_char_const | T_string_literal
 l_value : T_id more_l_value ;
 more_l_value : /* Empty */ | '[' expr ']' more_l_value;
 
-   /* TODO: Add rules/precedence for unop */
-   /* unop : '+' %prec UPLUS | '-' %prec UMINUS | '!' | "not" ; */
+unop : '+' | '-' | '!' | "not" ;
 
 call : T_id '(' opt_call ')' ;
 opt_call : /* Empty */ | expr more_opt_call
@@ -131,8 +136,6 @@ opt_block : /* Empty */ | local_def opt_block | stmt opt_block ;
 
 local_def : const_def | var_def ;
 
-   /* dangling-else shift/reduce conflict : automaticaly resolved correctly */
-   /* TODO: break inside case is NOT resolved correctly. It produces 3 shift/reduce conflicts */
 stmt : ';' | l_value assign expr ';' | l_value pm ';' | call ';'
      | "if" '(' expr ')' stmt | "if" '(' expr ')' stmt "else" stmt | "while" '(' expr ')' stmt
      | "FOR" '(' T_id ',' range ')' stmt | "do" stmt "while" '(' expr ')' ';'
@@ -142,7 +145,7 @@ stmt : ';' | l_value assign expr ';' | l_value pm ';' | call ';'
 pm : "++" | "--" ;
 opt_case : /* Empty */ | "case" const_expr ':' more_case clause ;
 more_case : /* Empty */ | "case" const_expr ':' more_case ;
-opt_default : "default" ':' clause ;
+opt_default : /* Empty */ | "default" ':' clause ;
 opt_expr : /* Empty */ | ',' expr ;
 opt_format : /* Empty */ | format more_format;
 more_format : /* Empty */ | ',' format more_format ;
@@ -154,7 +157,7 @@ to_downto : "TO" | "DOWNTO" ;
 opt_step : /* Empty */ | "STEP" expr ;
 
 clause : more_clause opt_clause ;
-more_clause : /* Empty */ | stmt more_clause ;
+more_clause : /* Empty */ %prec SWITCH_BRK | stmt more_clause ;
 opt_clause : "break" ';' | "NEXT" ';' ;
 
 write : "WRITE" | "WRITELN" | "WRITESP" | "WRITESPLN" ;
