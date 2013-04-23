@@ -1,7 +1,11 @@
 %{
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "error.h"
+#include "general.h"
+#include "pazcal.lex.h"
+
 %}
 
 %token T_and          "and" 
@@ -21,9 +25,7 @@
 %token T_FUNC         "FUNC"
 %token T_if           "if"
 %token T_int          "int"
-%token T_MOD          "MOD"
 %token T_NEXT         "NEXT"
-%token T_not          "not"
 %token T_or           "or"
 %token T_PROC         "PROC"
 %token T_PROGRAM      "PROGRAM"
@@ -45,8 +47,6 @@
 %token T_neq          "!="
 %token T_geq          ">="
 %token T_leq          "<="
-%token T_logicAnd     "&&"
-%token T_logicOr      "||"
 %token T_plusplus     "++"
 %token T_minusminus   "--"
 %token T_pluseq       "+="
@@ -60,23 +60,21 @@
 
 %nonassoc '=' "++" "--" "+=" "-=" "*=" "/=" "%="
 
-/* Fix dangling else */
+/* Fix dangling else shift/reduce */
 %nonassoc ')'
 %nonassoc "else"
 
-/* Fix break shift/reduce conflict */
+/* Fix break inside switch shift/reduce conflict */
 %nonassoc "break"
 %nonassoc SWITCH_BRK
 
-%left "||" "or"
-%left "&&" "and"
+%left "or"
+%left "and"
 %left "==" "!="
 %left '<' '>' "<=" ">="
 %left '+' '-'
-%left '*' '/' '%' "MOD"
+%left '*' '/' '%'
 %left UNOP
-
-   /* %left UMINUS UPLUS */
 
 %%
 
@@ -114,18 +112,17 @@ type : "int" | "bool" | "char" | "REAL" ;
 
 const_expr : expr ;
 
-   /* TODO: should make flex consider '%' and 'MOD' as equal tokens as well as '&&' "AND" '||' "OR" */
 expr : T_int_const | T_float_const | T_char_const | T_string_literal
      | "true" | "false" | '(' expr ')' | l_value | call | unop expr %prec UNOP
      | expr '+' expr | expr '-' expr | expr '*' expr | expr '/' expr
-     | expr '%' expr | expr "MOD" expr | expr "==" expr | expr "!=" expr
+     | expr '%' expr | expr "==" expr | expr "!=" expr
      | expr '<' expr | expr '>' expr | expr "<=" expr | expr ">=" expr
-     | expr "&&" expr | expr "and" expr | expr "||" expr | expr "or" expr ;
+     | expr "and" expr | expr "or" expr ;
 
 l_value : T_id more_l_value ;
 more_l_value : /* Empty */ | '[' expr ']' more_l_value;
 
-unop : '+' | '-' | '!' | "not" ;
+unop : '+' | '-' | '!' ;
 
 call : T_id '(' opt_call ')' ;
 opt_call : /* Empty */ | expr more_opt_call
@@ -139,15 +136,15 @@ local_def : const_def | var_def ;
 stmt : ';' | l_value assign expr ';' | l_value pm ';' | call ';'
      | "if" '(' expr ')' stmt | "if" '(' expr ')' stmt "else" stmt | "while" '(' expr ')' stmt
      | "FOR" '(' T_id ',' range ')' stmt | "do" stmt "while" '(' expr ')' ';'
-     | "switch" '(' expr ')' '{' opt_case opt_default '}'
+     | "switch" '(' expr ')' '{' opt_case_clause opt_default_clause '}'
      | "break" ';' | "continue" ';' | "return" opt_expr ';'
      | write '(' opt_format ')' ';' | block;
 pm : "++" | "--" ;
-opt_case : /* Empty */ | "case" const_expr ':' more_case clause ;
+opt_case_clause : /* Empty */ | "case" const_expr ':' more_case clause opt_case_clause;
 more_case : /* Empty */ | "case" const_expr ':' more_case ;
-opt_default : /* Empty */ | "default" ':' clause ;
-opt_expr : /* Empty */ | ',' expr ;
-opt_format : /* Empty */ | format more_format;
+opt_default_clause : /* Empty */ | "default" ':' clause ;
+opt_expr : /* Empty */ | expr ;
+opt_format : /* Empty */ | format more_format ;
 more_format : /* Empty */ | ',' format more_format ;
 
 assign : '=' | "+=" | "-=" | "*=" | "/=" | "%=" ;
@@ -167,4 +164,23 @@ opt_format_expr : /* Empty */ | ',' expr ;
 
 %%
 
-int main() { return yyparse(); }
+/* flags:
+      -f          : Read from standard input
+      filename    : Read from file "filename"
+*/
+int main(int argc, char *argv[]) {
+   if (argc != 2) { printf("Usage: %s [-f | filename]\n", argv[0]); exit(1); }
+
+   linecount = 1;
+   if (strcmp(argv[1], "-f") == 0) filename = "stdin";
+   else {
+      filename = argv[1];
+      FILE *f = fopen(filename, "r");
+
+      if (!f) { fprintf(stderr, "No such file or directory\n"); exit(2); }
+      
+      yy_switch_to_buffer(yy_create_buffer(f, YY_BUF_SIZE));
+   }
+
+   return yyparse();
+}

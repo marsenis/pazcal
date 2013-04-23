@@ -35,6 +35,17 @@
    --------- Υλοποίηση των συναρτήσεων του χειριστή σφαλμάτων ----------
    --------------------------------------------------------------------- */
 
+#define __COLORS
+
+#define KNRM  "\x1B[0m"
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define KYEL  "\x1B[33m"
+#define KBLU  "\x1B[34m"
+#define KMAG  "\x1B[35m"
+#define KCYN  "\x1B[36m"
+#define KWHT  "\x1B[37m"
+
 void internal (const char * fmt, ...)
 {
    va_list ap;
@@ -44,7 +55,8 @@ void internal (const char * fmt, ...)
       fmt++;
    else
       fprintf(stderr, "%s:%d: ", filename, linecount);
-   fprintf(stderr, "Internal error, ");
+
+   fprintf(stderr, "[Internal error] ");
    vfprintf(stderr, fmt, ap);
    fprintf(stderr, "\n");
    va_end(ap);
@@ -60,8 +72,19 @@ void fatal (const char * fmt, ...)
       fmt++;
    else
       fprintf(stderr, "%s:%d: ", filename, linecount);
-   fprintf(stderr, "Fatal error, ");
+
+#ifdef __COLORS
+   fprintf(stderr, KRED "[fatal error] ");
+#else
+   fprintf(stderr, "[fatal error] ");
+#endif
+
    vfprintf(stderr, fmt, ap);
+
+#ifdef __COLORS
+   fprintf(stderr, KNRM);
+#endif
+
    fprintf(stderr, "\n");
    va_end(ap);
    exit(1);
@@ -72,15 +95,30 @@ void error (const char * fmt, ...)
    va_list ap;
 
    va_start(ap, fmt);
-   fprintf(stderr, fmt, ap);
-   return;
 
    if (fmt[0] == '\r')
       fmt++;
    else
       fprintf(stderr, "%s:%d: ", filename, linecount);
-   fprintf(stderr, "Error, ");
+
+   /*
+#ifdef __COLORS
+   fprintf(stderr, KRED "[error] " KNRM );
+#else
+   fprintf(stderr, "[error] ");
+#endif
+   */
+
+#ifdef __COLORS
+   fprintf(stderr, KRED );
+#endif
+
    vfprintf(stderr, fmt, ap);
+
+#ifdef __COLORS
+   fprintf(stderr, KNRM);
+#endif
+
    fprintf(stderr, "\n");
    va_end(ap);
 }
@@ -94,8 +132,19 @@ void warning (const char * fmt, ...)
       fmt++;
    else
       fprintf(stderr, "%s:%d: ", filename, linecount);
-   fprintf(stderr, "Warning, ");
+
+#ifdef __COLORS
+   fprintf(stderr, KYEL "[warning] ");
+#else
+   fprintf(stderr, "[warning] ");
+#endif
+
    vfprintf(stderr, fmt, ap);
+
+#ifdef __COLORS
+   fprintf(stderr, KNRM);
+#endif
+
    fprintf(stderr, "\n");
    va_end(ap);
 }

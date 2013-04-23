@@ -1,11 +1,11 @@
 CC=gcc
 CFLAGS=-Wall -g
 
-pazcal: pazcal.lex.o pazcal.tab.o error.o
+pazcal: pazcal.lex.o pazcal.tab.o error.o general.o
 		$(CC) $(CFLAGS) -o pazcal $+ -lfl
 
 pazcal.lex.c: pazcal.l
-		flex -s -o pazcal.lex.c pazcal.l
+		flex -s --header-file=pazcal.lex.h -o pazcal.lex.c pazcal.l
 
 pazcal.tab.c pazcal.tab.h: pazcal.y
 		bison -dv pazcal.y
@@ -14,7 +14,7 @@ pazcal.tab.c pazcal.tab.h: pazcal.y
 		$(CC) $(CFLAGS) -c $<
 
 clean:
-		$(RM) *.o pazcal.lex.c pazcal.tab.c pazcal.tab.h pazcal.output
+		$(RM) *.o pazcal.lex.c pazcal.tab.c pazcal.tab.h pazcal.output pazcal.lex.h
 
 distclean: clean
 		$(RM) pazcal
