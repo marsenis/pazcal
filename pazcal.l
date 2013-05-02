@@ -1,16 +1,15 @@
 %{
 #include <stdio.h>
+#include <string.h>
 
 #include "error.h"
 #include "general.h"
+#include "symbol.h"
 #include "pazcal.tab.h"
 
 #define T_eof          0
 
-/*
-int linecount = 1;
-char filename[] = "stdin";
-*/
+char* removeEscaped(char*);
 %}
 
 D         [0-9]
@@ -59,9 +58,13 @@ ESCAPESEQ (\\n|\\t|\\r|\\0|\\\\|\\\'|\\\")
 "WRITESP"       { return T_WRITESP  ;}
 "WRITESPLN"     { return T_WRITESPLN;}
 
-{L}({ALPH}|_)*  { return T_id; }
-(0|[1-9]{D}*)   { return T_int_const; }
-{D}+\.{D}+((e|E)(\+|\-)?{D}+)?   { return T_float_const; }
+{L}({ALPH}|_)*  { yylval.str = (char *) new( sizeof(char)  * (strlen(yytext) + 1) );
+                  strcpy(yylval.str, yytext);
+                  return T_id; }
+(0|[1-9]{D}*)   { yylval.integer = atoi(yytext);
+                  return T_int_const; }
+{D}+\.{D}+((e|E)(\+|\-)?{D}+)?   { yylval.real = atof(yytext);
+                                   return T_float_const; }
 
 [\>\<\+\-\*\/\%\!\=\&\;\.\(\)\:\,\[\]\{\}]   { return yytext[0]; }
 "==" { return T_eq; }
@@ -81,8 +84,13 @@ ESCAPESEQ (\\n|\\t|\\r|\\0|\\\\|\\\'|\\\")
 [ \t]    { /* empty */ }
 \/\/.*   { /* empty */ } /* one line comments */
 
-\'({PRINTABLE}|{ESCAPESEQ})\'    { return T_char_const; }
-\"([^\\\"\n]|{ESCAPESEQ})*\"     { return T_string_literal; }
+\'({PRINTABLE}|{ESCAPESEQ})\'    { yylval.chr = * (char *) (removeEscaped(yytext) + 1);
+                                   return T_char_const; }
+\"([^\\\"\n]|{ESCAPESEQ})*\"     { char* s = removeEscaped(yytext);
+                                   int len = strlen(s);
+                                   s[len-1] = '\0';
+                                   yylval.str = s + 1;
+                                   return T_string_literal; }
 
 "\/*"            { BEGIN(COMMENT); }
 <COMMENT>"*\/"   { BEGIN(INITIAL); }
@@ -97,3 +105,47 @@ ESCAPESEQ (\\n|\\t|\\r|\\0|\\\\|\\\'|\\\")
 <<EOF>>  { return T_eof; }
 
 %%
+
+char* removeEscaped(char* s) {
+   int i, j;
+   char *p;
+
+   p = new( sizeof(char) * (strlen(s) + 1) );
+   for (i = j = 0; s[i] != '\0'; i++, j++) {
+      if (s[i] == '\\') {
+         switch (s[i+1]) {
+            case 'n':
+               p[j] = '\n';
+               break;
+            case 't':
+               p[j] = '\t';
+               break;
+            case 'r':
+               p[j] = '\r';
+               break;
+            case '0':
+               p[j] = '\0';
+               break;
+            case '\\':
+               p[j] = '\\';
+               break;
+            case '\'':
+               p[j] = '\'';
+               break;
+            case '\"':
+               p[j] = '\"';
+               break;
+            case '\0':
+               i--;
+               break;
+            default:
+               p[j] = s[i+1];
+               break;
+         }
+         i++;
+      } else p[j] = s[i];
+   }
+
+   p[j] = '\0';
+   return p;
+}

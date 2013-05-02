@@ -1,0 +1,18 @@
+const int a = 5;
+const REAL makis = 4.8;
+
+const bool hello = false, world = true;
+
+PROC test(int A) { char x; }
+
+FUNC REAL test2(bool pinakas[58]) { return 43; }
+
+PROGRAM hello()
+{
+   char x, y;
+   int A[100];
+
+   x = 5;
+   y = 42;
+   return 0;
+}

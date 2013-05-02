@@ -101,16 +101,10 @@ void error (const char * fmt, ...)
    else
       fprintf(stderr, "%s:%d: ", filename, linecount);
 
-   /*
 #ifdef __COLORS
-   fprintf(stderr, KRED "[error] " KNRM );
+   fprintf(stderr, KRED "[error] ");
 #else
    fprintf(stderr, "[error] ");
-#endif
-   */
-
-#ifdef __COLORS
-   fprintf(stderr, KRED );
 #endif
 
    vfprintf(stderr, fmt, ap);
@@ -137,6 +131,32 @@ void warning (const char * fmt, ...)
    fprintf(stderr, KYEL "[warning] ");
 #else
    fprintf(stderr, "[warning] ");
+#endif
+
+   vfprintf(stderr, fmt, ap);
+
+#ifdef __COLORS
+   fprintf(stderr, KNRM);
+#endif
+
+   fprintf(stderr, "\n");
+   va_end(ap);
+}
+
+void note(const char * fmt, ...)
+{
+   va_list ap;
+
+   va_start(ap, fmt);
+   if (fmt[0] == '\r')
+      fmt++;
+   else
+      fprintf(stderr, "%s:%d: ", filename, linecount);
+
+#ifdef __COLORS
+   fprintf(stderr, KGRN "[note] ");
+#else
+   fprintf(stderr, "[note] ");
 #endif
 
    vfprintf(stderr, fmt, ap);

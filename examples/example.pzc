@@ -1,4 +1,4 @@
-PROG $ hello() {
+PROGRAM $ hello() {
    int hello_world;
    'a' '1' '\n' '\"' '&'
    ~

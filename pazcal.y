@@ -4,9 +4,27 @@
 
 #include "error.h"
 #include "general.h"
+#include "symbol.h"
 #include "pazcal.lex.h"
 
+#define SYMB_TABLE_SIZE 10007
+
+/* Type of a constant used in subrules of the grammar
+   e.g. int a, b; because when the parser recognizes , b
+   it won't be able to know it's type
+*/
+Type constType, varType;
+SymbolEntry *func;
 %}
+
+%union {
+   RepChar    chr;
+   RepInteger integer;
+   RepReal    real;
+   RepString  str;
+
+   Type       t;
+}
 
 %token T_and          "and" 
 %token T_bool         "bool"
@@ -41,8 +59,7 @@
 %token T_WRITESP      "WRITESP"
 %token T_WRITESPLN    "WRITESPLN"
 
-%token T_id
-%token T_int_const
+%token<str> T_id
 %token T_eq           "=="
 %token T_neq          "!="
 %token T_geq          ">="
@@ -54,17 +71,22 @@
 %token T_multeq       "*="
 %token T_diveq        "/="
 %token T_modeq        "%="
-%token T_float_const
-%token T_char_const
-%token T_string_literal
+%token<integer> T_int_const
+%token<real>    T_float_const
+%token<chr>     T_char_const
+%token<str>     T_string_literal
 
-%nonassoc '=' "++" "--" "+=" "-=" "*=" "/=" "%="
+%type<t> type
+%type<t> proc_func
 
-/* Fix dangling else shift/reduce */
+/* Assosiativity and precedence of operators */
+/* %nonassoc '=' "++" "--" "+=" "-=" "*=" "/=" "%=" */
+
+/* Fixes dangling else shift/reduce */
 %nonassoc ')'
 %nonassoc "else"
 
-/* Fix break inside switch shift/reduce conflict */
+/* Fixes break inside switch shift/reduce conflict */
 %nonassoc "break"
 %nonassoc SWITCH_BRK
 
@@ -76,43 +98,78 @@
 %left '*' '/' '%'
 %left UNOP
 
+/* TODO: For Semantic Analysis:
+         * Type checking on expressions
+         * break/continue only inside while/for/switch. (with special rule for switch)
+         * function call type checking
+         * array bounds checking
+         * constants evaluation
+         * add build-in functions to the outer scope
+         ( * multidimensional arrays * )
+*/
 %%
 
 module : /* Empty */  | declaration module ;
 
 declaration : const_def | var_def | routine | program ;
 
-const_def : "const" type T_id '=' const_expr opt_const_def ';' ;
-opt_const_def : /* Empty */ | ',' T_id '=' const_expr opt_const_def ;
+/* TODO: add different production in <const_expr> other than <expr>
+         in order to be able to statically evaluate constant expressions
+         and bind their name with the value in the symbol table
+*/
+const_def : "const" type T_id '=' const_expr
+            { constType = $2; newConstant($3, $2); } opt_const_def ';' ;
+opt_const_def : /* Empty */ | ',' T_id '=' const_expr
+               { newConstant($2, constType); }
+               opt_const_def ;
 
-var_def : type var_init opt_var_def ';' ;
+var_def : type { varType = $1; } var_init opt_var_def ';' ;
 opt_var_def : /* Empty */ | ',' var_init opt_var_def ;
 
-var_init : T_id opt_var_init | T_id '[' const_expr ']' array_var_init ;
+/* TODO: multidimensional arrays are temporarily not supported.
+         Should fix this if required.
+*/
+/* TODO: replace T_int_const with const_expr */
+var_init : T_id opt_var_init
+           { newVariable($1, varType); }
+         | T_id '[' T_int_const ']'
+           { newVariable($1, typeArray($3, varType)); } ;
 opt_var_init : /* Empty */ | '=' expr ;
-array_var_init : /* Empty */ | '[' const_expr ']' array_var_init ;
+/* array_var_init : /* Empty | '[' const_expr ']' array_var_init ; */
 
-routine_header : proc_func T_id '(' opt_args ')' ;
-proc_func : "PROC" | "FUNC" type ;
-opt_args : /* Empty */ | type formal more_args ;
-more_args : /* Empty */  | ',' type formal more_args ;
+routine_header : proc_func T_id
+                 { func = newFunction($2); openScope(); } '(' opt_args ')'
+                 { endFunctionHeader(func, $1); } ;
+proc_func : "PROC" { $$ = typeVoid; } | "FUNC" type { $$ = $2; };
+parameter : type { varType = $1; } formal ;
+opt_args : /* Empty */ | parameter more_args ;
+more_args : /* Empty */  | ',' parameter more_args ;
 
-formal : T_id | '&' T_id | T_id '[' opt_const_expr ']' array_formal
-opt_const_expr : /* Empty */ | const_expr ;
-array_formal : /* Empty */ | '[' const_expr ']' array_formal ;
+/* TODO: add support for multidimensional arrays if needed */
+/* TODO: add const_expr instead of T_id */
+formal : T_id { newParameter($1, varType, PASS_BY_VALUE, func); }
+       | '&' T_id { newParameter($2, varType, PASS_BY_REFERENCE, func); }
+       | T_id '[' ']' { newParameter($1, typeIArray(varType), PASS_BY_REFERENCE, func); } 
+       | T_id '[' T_int_const ']' { newParameter($1, typeArray($3, varType), PASS_BY_REFERENCE, func); } /* array_formal */ ;
+/* opt_const_expr : /* Empty | const_expr ; */
+/* array_formal : /* Empty | '[' const_expr ']' array_formal ; */
 
-routine : routine_header more_routine ;
-more_routine : ';' | block ;
+routine : routine_header ';' { forwardFunction(func); closeScope(); }
+        | routine_header block { closeScope(); } ;
 
 program_header : "PROGRAM" T_id '(' ')' ;
 
 program : program_header block ;
 
-type : "int" | "bool" | "char" | "REAL" ;
+type : "int"  { $$ = typeInteger; }
+     | "bool" { $$ = typeBoolean; }
+     | "char" { $$ = typeChar; }
+     | "REAL" { $$ = typeReal; } ;
 
 const_expr : expr ;
 
-expr : T_int_const | T_float_const | T_char_const | T_string_literal
+expr : T_int_const | T_float_const | T_char_const { note("found char const '%c'", $1); }
+     | T_string_literal { note("found string literal: \"%s\"", $1); }
      | "true" | "false" | '(' expr ')' | l_value | call | unop expr %prec UNOP
      | expr '+' expr | expr '-' expr | expr '*' expr | expr '/' expr
      | expr '%' expr | expr "==" expr | expr "!=" expr
@@ -128,7 +185,7 @@ call : T_id '(' opt_call ')' ;
 opt_call : /* Empty */ | expr more_opt_call
 more_opt_call : /* Empty */ | ',' expr more_opt_call ;
 
-block : '{' opt_block '}' ;
+block : '{' { openScope(); } opt_block '}' { closeScope(); } ;
 opt_block : /* Empty */ | local_def opt_block | stmt opt_block ;
 
 local_def : const_def | var_def ;
@@ -182,5 +239,13 @@ int main(int argc, char *argv[]) {
       yy_switch_to_buffer(yy_create_buffer(f, YY_BUF_SIZE));
    }
 
-   return yyparse();
+   initSymbolTable(SYMB_TABLE_SIZE);
+   openScope(); // Global scope
+
+   if (yyparse()) exit(1);
+
+   closeScope();
+   //printSymbolTable();
+
+   return 0;
 }
