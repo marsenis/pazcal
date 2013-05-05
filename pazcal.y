@@ -14,7 +14,27 @@
    it won't be able to know it's type
 */
 Type constType, varType;
-SymbolEntry *func;
+SymbolEntry *func, *p;
+
+/* TODO: this definition is currently in
+   symbol.h. Should be moved or use something
+   else instead
+   TODO: consider using lvalue struct from
+   alan implementation
+*/
+/*
+typedef struct {
+   Type t;
+   union {
+      RepInteger integer;
+      RepBoolean boolean;
+      RepChar    chr;
+      RepReal    real;
+      RepString  str;
+   } v;
+} Const;
+*/
+
 %}
 
 %union {
@@ -24,6 +44,8 @@ SymbolEntry *func;
    RepString  str;
 
    Type       t;
+
+   Const      cnst;
 }
 
 %token T_and          "and" 
@@ -78,6 +100,7 @@ SymbolEntry *func;
 
 %type<t> type
 %type<t> proc_func
+%type<cnst> const_expr
 
 /* Assosiativity and precedence of operators */
 /* %nonassoc '=' "++" "--" "+=" "-=" "*=" "/=" "%=" */
@@ -113,14 +136,17 @@ module : /* Empty */  | declaration module ;
 
 declaration : const_def | var_def | routine | program ;
 
-/* TODO: add different production in <const_expr> other than <expr>
-         in order to be able to statically evaluate constant expressions
-         and bind their name with the value in the symbol table
-*/
 const_def : "const" type T_id '=' const_expr
-            { constType = $2; newConstant($3, $2); } opt_const_def ';' ;
+            { constType = $2;
+              if ( !equalType($2, ($5).t) )
+                 error("incompatible types in assignment");
+              newConstant($3, $2, ($5).v);
+            } opt_const_def ';' ;
 opt_const_def : /* Empty */ | ',' T_id '=' const_expr
-               { newConstant($2, constType); }
+               { if ( !equalType(constType, ($4).t) )
+                    error("incompatible types in assignment");
+                 newConstant($2, constType, ($4).v);
+               }
                opt_const_def ;
 
 var_def : type { varType = $1; } var_init opt_var_def ';' ;
@@ -129,11 +155,14 @@ opt_var_def : /* Empty */ | ',' var_init opt_var_def ;
 /* TODO: multidimensional arrays are temporarily not supported.
          Should fix this if required.
 */
-/* TODO: replace T_int_const with const_expr */
 var_init : T_id opt_var_init
            { newVariable($1, varType); }
-         | T_id '[' T_int_const ']'
-           { newVariable($1, typeArray($3, varType)); } ;
+         | T_id '[' const_expr ']'
+           {
+              if ( !equalType( ($3).t, typeInteger ) )
+                 error("array size not an integer");
+              newVariable($1, typeArray( ($3).v.integer, varType));
+           } ;
 opt_var_init : /* Empty */ | '=' expr ;
 /* array_var_init : /* Empty | '[' const_expr ']' array_var_init ; */
 
@@ -146,11 +175,15 @@ opt_args : /* Empty */ | parameter more_args ;
 more_args : /* Empty */  | ',' parameter more_args ;
 
 /* TODO: add support for multidimensional arrays if needed */
-/* TODO: add const_expr instead of T_id */
 formal : T_id { newParameter($1, varType, PASS_BY_VALUE, func); }
        | '&' T_id { newParameter($2, varType, PASS_BY_REFERENCE, func); }
        | T_id '[' ']' { newParameter($1, typeIArray(varType), PASS_BY_REFERENCE, func); } 
-       | T_id '[' T_int_const ']' { newParameter($1, typeArray($3, varType), PASS_BY_REFERENCE, func); } /* array_formal */ ;
+       | T_id '[' const_expr ']'
+         {
+            if ( !equalType( ($3).t, typeInteger ) )
+               error("array size not an integer");
+            newParameter($1, typeArray( ($3).v.integer, varType), PASS_BY_REFERENCE, func);
+         } /* array_formal */ ;
 /* opt_const_expr : /* Empty | const_expr ; */
 /* array_formal : /* Empty | '[' const_expr ']' array_formal ; */
 
@@ -166,7 +199,150 @@ type : "int"  { $$ = typeInteger; }
      | "char" { $$ = typeChar; }
      | "REAL" { $$ = typeReal; } ;
 
-const_expr : expr ;
+const_expr : T_int_const { ($$).t = typeInteger; ($$).v.integer = $1; }
+           | T_float_const { ($$).t = typeReal; ($$).v.real = $1; }
+           | T_char_const { ($$).t = typeChar; ($$).v.chr = $1; }
+           /* | T_string_literal { ($$).t = Type; ($$).v.str = $1; } */
+           | "true" { ($$).t = typeBoolean; ($$).v.boolean = 1; }
+           | "false" { ($$).t = typeBoolean; ($$).v.boolean = 0; }
+           | '(' const_expr ')' { $$ = $2; }
+           | T_id
+             { p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
+               if (p->entryType != ENTRY_CONSTANT)
+                  error("identifier '%s' is not a constant", $1);
+               ($$).t = p->u.eConstant.type;
+                if ( equalType( ($$).t, typeInteger ) )
+                   ($$).v.integer = p->u.eConstant.value.vInteger;
+                else if ( equalType( ($$).t, typeReal ) )
+                   ($$).v.real = p->u.eConstant.value.vReal;
+                else if ( equalType( ($$).t, typeBoolean ) )
+                   ($$).v.boolean = p->u.eConstant.value.vBoolean;
+                else if ( equalType( ($$).t, typeChar ) )
+                   ($$).v.chr = p->u.eConstant.value.vChar;
+             }
+               
+           /* TODO: gather up all this code inside a function */
+           /* TODO: support Chars and Reals (and maybe strings) */
+           | '+' const_expr %prec UNOP
+             {
+               if ( !equalType( ($2).t, typeInteger ) && !equalType( ($2).t, typeReal) )
+                  error("Unary operator '+' used with operand of"
+                        " incompatible type");
+               $$ = $2;
+             }
+           | '-' const_expr %prec UNOP
+             {
+               if ( !equalType( ($2).t, typeInteger ) && !equalType( ($2).t, typeReal) )
+                  error("Unary operator '-' used with operand of"
+                        " incompatible type");
+               ($$).t = ($2).t;
+               ($$).v.integer = - ($2).v.integer;
+             }
+           | const_expr '+' const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '+' used with operands of"
+                        " incompatible type");
+               ($$).t = typeInteger;
+               ($$).v.integer = ($1).v.integer + ($3).v.integer;
+             }
+           | const_expr '-' const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '-' used with operands of"
+                        " incompatible type");
+               ($$).t = typeInteger;
+               ($$).v.integer = ($1).v.integer - ($3).v.integer;
+             }
+           | const_expr '*' const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '*' used with operands of"
+                        " incompatible type");
+               ($$).t = typeInteger;
+               ($$).v.integer = ($1).v.integer * ($3).v.integer;
+             }
+           | const_expr '/' const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '/' used with operands of"
+                        " incompatible type");
+               ($$).t = typeInteger;
+               ($$).v.integer = ($1).v.integer / ($3).v.integer;
+             }
+           | const_expr '%' const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '\%' used with operands of"
+                        " incompatible type");
+               ($$).t = typeInteger;
+               ($$).v.integer = ($1).v.integer % ($3).v.integer;
+             }
+           | const_expr "==" const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '==' used with operands of"
+                        " incompatible type");
+               ($$).t = typeInteger;
+               ($$).v.boolean = ($1).v.integer == ($3).v.integer;
+             }
+           | const_expr "!=" const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '!=' used with operands of"
+                        " incompatible type");
+               ($$).t = typeInteger;
+               ($$).v.boolean = ($1).v.integer != ($3).v.integer;
+             }
+           | const_expr '<' const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '<' used with operands of"
+                        " incompatible type");
+               ($$).t = typeBoolean;
+               ($$).v.boolean = ($1).v.integer < ($3).v.integer;
+             }
+           | const_expr '>' const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '<' used with operands of"
+                        " incompatible type");
+               ($$).t = typeBoolean;
+               ($$).v.boolean = ($1).v.integer > ($3).v.integer;
+             }
+           | const_expr "<=" const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '<=' used with operands of"
+                        " incompatible type");
+               ($$).t = typeBoolean;
+               ($$).v.boolean = ($1).v.integer <= ($3).v.integer;
+             }
+           | const_expr ">=" const_expr
+             {
+               if ( !equalType( ($1).t, typeInteger ) || !equalType( ($3).t, typeInteger) )
+                  error("Binary operator '>=' used with operands of"
+                        " incompatible type");
+               ($$).t = typeBoolean;
+               ($$).v.boolean = ($1).v.integer >= ($3).v.integer;
+             }
+           | const_expr "and" const_expr
+             {
+               if ( !equalType( ($1).t, typeBoolean ) || !equalType( ($3).t, typeBoolean ) )
+                  error("Binary operator 'and' used with operands of"
+                        " incompatible type");
+               ($$).t = typeBoolean;
+               ($$).v.boolean = ($1).v.boolean && ($3).v.boolean;
+             }
+           | const_expr "or" const_expr
+             {
+               if ( !equalType( ($1).t, typeBoolean ) || !equalType( ($3).t, typeBoolean) )
+                  error("Binary operator 'or' used with operands of"
+                        " incompatible type");
+               ($$).t = typeBoolean;
+               ($$).v.boolean = ($1).v.boolean || ($3).v.boolean;
+             }
+           ;
 
 expr : T_int_const | T_float_const | T_char_const { note("found char const '%c'", $1); }
      | T_string_literal { note("found string literal: \"%s\"", $1); }

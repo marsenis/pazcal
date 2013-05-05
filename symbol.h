@@ -231,4 +231,16 @@ void          printMode          (PassMode mode);
 /* Added for debugging. It's defined in symbolDebug.c */
 void          printSymbolTable   ();
 
+/* Temporary. TODO: MOVE IT */
+typedef struct {
+   Type t;
+   union {
+      RepInteger integer;
+      RepBoolean boolean;
+      RepChar    chr;
+      RepReal    real;
+      RepString  str;
+   } v;
+} Const;
+
 #endif

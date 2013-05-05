@@ -24,7 +24,16 @@ void printSymbolTable ()
             while (e != NULL) {
                 if (e->entryType == ENTRY_TEMPORARY)
                     printf("$%d", e->u.eTemporary.number);
-                else
+                else if (e->entryType == ENTRY_CONSTANT) {
+                    if ( equalType( e->u.eConstant.type, typeInteger ) )
+                       printf("%s[%d]", e->id, e->u.eConstant.value.vInteger);
+                    else if ( equalType( e->u.eConstant.type, typeBoolean ) )
+                       printf("%s[%i]", e->id, e->u.eConstant.value.vBoolean);
+                    else if ( equalType( e->u.eConstant.type, typeReal ) )
+                       printf("%s[%lf]", e->id, e->u.eConstant.value.vReal);
+                    else if ( equalType( e->u.eConstant.type, typeChar ) )
+                       printf("%s[%c]", e->id, e->u.eConstant.value.vChar);
+                } else 
                     printf("%s", e->id);
                 switch (e->entryType) {
                     case ENTRY_FUNCTION:
