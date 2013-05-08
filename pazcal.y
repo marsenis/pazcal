@@ -19,6 +19,9 @@ SymbolEntry *func, *p;
 Const applyOperation(char, Const, Const);
 void addConstant(char *, Type, Const);
 
+Type exprTypeCheck(char, Type, Type);
+Type unopTypeCheck(char, Type);
+
 /* TODO: this definition is currently in
    symbol.h. Should be moved or use something
    else instead
@@ -104,6 +107,10 @@ typedef struct {
 %type<t> type
 %type<t> proc_func
 %type<cnst> const_expr
+%type<t> expr
+%type<t> l_value;
+%type<integer> more_l_value;
+%type<t> call
 
 /* Assosiativity and precedence of operators */
 /* %nonassoc '=' "++" "--" "+=" "-=" "*=" "/=" "%=" */
@@ -125,13 +132,13 @@ typedef struct {
 %left UNOP
 
 /* TODO: For Semantic Analysis:
-         * Type checking on expressions
+         ~ Type checking on expressions
          * break/continue only inside while/for/switch. (with special rule for switch)
          * function call type checking
          * array bounds checking
          # constants evaluation
-         * add build-in functions to the outer scope
-         * multidimensional arrays *
+         ~ add build-in functions to the outer scope
+         * multidimensional arrays
 */
 %%
 
@@ -171,7 +178,11 @@ opt_var_init : /* Empty */ | '=' expr ;
 
 routine_header : proc_func T_id
                  { func = newFunction($2); openScope(); } '(' opt_args ')'
-                 { endFunctionHeader(func, $1); } ;
+                 { endFunctionHeader(func, $1);
+#ifdef DEBUG_SYMBOL
+                 printf("Begining function body:\n"); printSymbolTable();
+#endif
+                 } ;
 proc_func : "PROC" { $$ = typeVoid; } | "FUNC" type { $$ = $2; };
 parameter : type { varType = $1; } formal ;
 opt_args : /* Empty */ | parameter more_args ;
@@ -257,20 +268,70 @@ const_expr : T_int_const { ($$).t = typeInteger; ($$).v.integer = $1; }
            | const_expr "or" const_expr { $$ = applyOperation('|', $1, $3); }
            ;
 
-expr : T_int_const | T_float_const | T_char_const { note("found char const '%c'", $1); }
-     | T_string_literal { note("found string literal: \"%s\"", $1); }
-     | "true" | "false" | '(' expr ')' | l_value | call | unop expr %prec UNOP
-     | expr '+' expr | expr '-' expr | expr '*' expr | expr '/' expr
-     | expr '%' expr | expr "==" expr | expr "!=" expr
-     | expr '<' expr | expr '>' expr | expr "<=" expr | expr ">=" expr
-     | expr "and" expr | expr "or" expr ;
+expr : T_int_const { $$ = typeInteger; }
+     | T_float_const { $$ = typeReal; }
+     | T_char_const { $$ = typeChar; }
+     | T_string_literal { $$ = typeIArray(typeChar); }
+     | "true" { $$ = typeBoolean; }
+     | "false" { $$ = typeBoolean; }
+     | '(' expr ')' { $$ = $2; }
+     | l_value { $$ = $1; }
+     | call { $$ = $1; }
+     | '+' expr %prec UNOP { $$ = unopTypeCheck('+', $2); }
+     | '-' expr %prec UNOP { $$ = unopTypeCheck('-', $2); }
+     | '!' expr %prec UNOP { $$ = unopTypeCheck('!', $2); }
+     | expr '+' expr       { $$ = exprTypeCheck('+', $1, $3); }
+     | expr '-' expr       { $$ = exprTypeCheck('-', $1, $3); }
+     | expr '*' expr       { $$ = exprTypeCheck('*', $1, $3); }
+     | expr '/' expr       { $$ = exprTypeCheck('/', $1, $3); }
+     | expr '%' expr       { $$ = exprTypeCheck('%', $1, $3); }
+     | expr "==" expr      { $$ = exprTypeCheck('=', $1, $3); }
+     | expr "!=" expr      { $$ = exprTypeCheck('!', $1, $3); }
+     | expr '<' expr       { $$ = exprTypeCheck('<', $1, $3); }
+     | expr '>' expr       { $$ = exprTypeCheck('>', $1, $3); }
+     | expr "<=" expr      { $$ = exprTypeCheck(',', $1, $3); }
+     | expr ">=" expr      { $$ = exprTypeCheck('.', $1, $3); }
+     | expr "and" expr     { $$ = exprTypeCheck('&', $1, $3); }
+     | expr "or" expr      { $$ = exprTypeCheck('|', $1, $3); } ;
 
-l_value : T_id more_l_value ;
-more_l_value : /* Empty */ | '[' expr ']' more_l_value;
+l_value : T_id
+          more_l_value 
+         {
+            Type t;
+            p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
+            if (p->entryType == ENTRY_CONSTANT)
+               t = p->u.eConstant.type;
+            else if (p->entryType == ENTRY_VARIABLE)
+               t = p->u.eVariable.type;
+            else if (p->entryType == ENTRY_PARAMETER)
+               t = p->u.eParameter.type;
+            else
+               error("identifier \"%s\" is not a variable/constant", $1);
 
-unop : '+' | '-' | '!' ;
+            int i;
+            for (i = 0; i < $2; i++) {
+               if (t->kind != TYPE_ARRAY && t->kind != TYPE_IARRAY) error("identifier \"%s\" is not a %d-dimensional array", $1, $2);
+                  t = t->refType;
+            }
+            $$ = t;
+         };
+more_l_value : /* Empty */ { $$ = 0; }
+             | '[' expr ']' more_l_value
+             { if (!equalType($2, typeInteger) && !equalType($2, typeChar))
+                  error("array subscript is not an int/char");
+               $$ = $4 + 1;
+             }
 
-call : T_id '(' opt_call ')' ;
+   /* unop : '+' | '-' | '!' ; */
+
+/* TODO: parameter matching and checking for functions */
+call : T_id '(' opt_call ')'
+      {
+         p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
+         if (p->entryType != ENTRY_FUNCTION)
+            error("object \"%s\" is not callable", $1);
+         $$ = p->u.eFunction.resultType;
+      };
 opt_call : /* Empty */ | expr more_opt_call
 more_opt_call : /* Empty */ | ',' expr more_opt_call ;
 
@@ -480,6 +541,51 @@ void addConstant(char *name, Type t, Const c) {
       error("incompatible types in assignment (probably involving booleans)");
 }
 
+Type unopTypeCheck(char op, Type t) {
+   if (op == '+' || op == '-') {
+      if (!equalType(t, typeInteger) && !equalType(t, typeChar) && !equalType(t, typeReal))
+         error("incompatible type in unary \'%c\' operator", op);
+   } else if (op == '!') {
+      if (!equalType(t, typeBoolean))
+         error("incompatible type in unary \'%c\' operator", op);
+   } else
+      internal("unrecognized operator passed in unopTypeCheck");
+   return t;
+}  
+
+inline int numOp(char op) { return op == '+' || op == '-' || op == '*' || op == '/'; }
+Type exprTypeCheck(char op, Type t1, Type t2) {
+   switch (op) {
+      case '&': case '|':
+         if ( !equalType(t1, typeBoolean) || !equalType(t2, typeBoolean) )
+            error("incompatible types in operation '%c%c'", op, op); // hackia
+         return typeBoolean;
+         break;
+      case '%':
+         if ( equalType(t1, typeReal) || equalType(t2, typeReal) )
+            error("operator '\%' used with real operands");
+      default:
+         if ( equalType(t1, typeReal) || equalType(t2, typeReal) )
+            return numOp(op) ? typeReal : typeBoolean;
+         else if ( equalType(t1, typeInteger) || equalType(t2, typeInteger) )
+            return numOp(op) ? typeInteger : typeBoolean;
+         else if ( equalType(t1, typeChar) || equalType(t2, typeChar) )
+            return numOp(op) ? typeChar : typeBoolean;
+         else
+            error("incompatible types in operation '%c'", op); // TODO: better error message: fix op
+         break;
+   }
+   return typeInteger; // Default action. TODO: change it
+}
+
+void addLibraryFunctions() {
+   SymbolEntry *p;
+
+   // TODO: add more library functions
+   p = newFunction("READ_INT");
+   endFunctionHeader(p, typeInteger);
+}
+
 /* flags:
       -f          : Read from standard input
       filename    : Read from file "filename"
@@ -499,10 +605,13 @@ int main(int argc, char *argv[]) {
    }
 
    initSymbolTable(SYMB_TABLE_SIZE);
+   openScope(); // library scope
+   addLibraryFunctions(); 
    openScope(); // Global scope
 
    if (yyparse()) exit(1);
 
+   closeScope();
    closeScope();
    //printSymbolTable();
 
