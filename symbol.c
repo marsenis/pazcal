@@ -196,10 +196,6 @@ void closeScope ()
     
     currentScope = currentScope->parent;
     delete(t);
-
-#ifdef DEBUG_SYMBOL
-    printSymbolTable();
-#endif
 }
 
 static void insertEntry (SymbolEntry * e)

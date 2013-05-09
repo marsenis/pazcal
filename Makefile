@@ -1,7 +1,7 @@
 CC=gcc
 CFLAGS=-g
 
-pazcal: pazcal.lex.o pazcal.tab.o error.o general.o symbol.o symbolDebug.o
+pazcal: pazcal.lex.o pazcal.tab.o error.o general.o symbol.o symbolDebug.o semantics.o
 		$(CC) $(CFLAGS) -o pazcal $+ -lfl
 
 pazcal.lex.c: pazcal.l
@@ -10,7 +10,7 @@ pazcal.lex.c: pazcal.l
 pazcal.tab.c pazcal.tab.h: pazcal.y
 		bison -dv pazcal.y
 
-%.o: %.c pazcal.tab.h error.h general.h symbol.h
+%.o: %.c pazcal.tab.h error.h general.h symbol.h semantics.h
 		$(CC) $(CFLAGS) -c $<
 
 clean:

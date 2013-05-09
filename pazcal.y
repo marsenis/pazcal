@@ -6,6 +6,7 @@
 #include "general.h"
 #include "symbol.h"
 #include "pazcal.lex.h"
+#include "semantics.h"
 
 #define SYMB_TABLE_SIZE 10007
 
@@ -13,14 +14,8 @@
    e.g. int a, b; because when the parser recognizes , b
    it won't be able to know it's type
 */
-Type constType, varType;
+Type constType, varType, arrayType;
 SymbolEntry *func, *p;
-
-Const applyOperation(char, Const, Const);
-void addConstant(char *, Type, Const);
-
-Type exprTypeCheck(char, Type, Type);
-Type unopTypeCheck(char, Type);
 
 /* TODO: this definition is currently in
    symbol.h. Should be moved or use something
@@ -107,6 +102,7 @@ typedef struct {
 %type<t> type
 %type<t> proc_func
 %type<cnst> const_expr
+%type<cnst> opt_const_expr
 %type<t> expr
 %type<t> l_value;
 %type<integer> more_l_value;
@@ -133,12 +129,13 @@ typedef struct {
 
 /* TODO: For Semantic Analysis:
          ~ Type checking on expressions
+         * Semantic Analysis on statements
          * break/continue only inside while/for/switch. (with special rule for switch)
          * function call type checking
-         * array bounds checking
-         # constants evaluation
-         ~ add build-in functions to the outer scope
-         * multidimensional arrays
+         # array bounds checking
+         ~ constants evaluation
+         # add build-in functions to the outer scope
+         # multidimensional arrays
 */
 %%
 
@@ -156,25 +153,15 @@ opt_const_def : /* Empty */ | ',' T_id '=' const_expr
 var_def : type { varType = $1; } var_init opt_var_def ';' ;
 opt_var_def : /* Empty */ | ',' var_init opt_var_def ;
 
-/* TODO: multidimensional arrays are temporarily not supported.
-         Should fix this if required.
-*/
 var_init : T_id opt_var_init
            { newVariable($1, varType); }
-         | T_id '[' const_expr ']'
-           {
-              if ( equalType( ($3).t, typeChar) ) {
-                 if ( ($3).v.chr < 0 ) error("negative array size");
-                 newVariable($1, typeArray( ($3).v.chr, varType ) );
-              } else if ( equalType( ($3).t, typeInteger) ) {
-                 if ( ($3).v.integer < 0 ) error("negative array size");
-                 newVariable($1, typeArray( ($3).v.integer, varType));
-              }
-              else
-                 error("array size not an integer");
-           } ;
+         | T_id '[' { arrayType = varType; } const_expr ']'
+           { arrayType = arrayTypeCheck( $4, arrayType ); } array_var_init
+           { newVariable($1, arrayType); };
 opt_var_init : /* Empty */ | '=' expr ;
-/* array_var_init : /* Empty | '[' const_expr ']' array_var_init ; */
+array_var_init : /* Empty */
+               | '[' const_expr ']'
+               { arrayType = arrayTypeCheck( $2, arrayType ); } array_var_init ;
 
 routine_header : proc_func T_id
                  { func = newFunction($2); openScope(); } '(' opt_args ')'
@@ -188,18 +175,17 @@ parameter : type { varType = $1; } formal ;
 opt_args : /* Empty */ | parameter more_args ;
 more_args : /* Empty */  | ',' parameter more_args ;
 
-/* TODO: add support for multidimensional arrays if needed */
 formal : T_id { newParameter($1, varType, PASS_BY_VALUE, func); }
        | '&' T_id { newParameter($2, varType, PASS_BY_REFERENCE, func); }
-       | T_id '[' ']' { newParameter($1, typeIArray(varType), PASS_BY_REFERENCE, func); } 
-       | T_id '[' const_expr ']'
-         {
-            if ( !equalType( ($3).t, typeInteger ) )
-               error("array size not an integer");
-            newParameter($1, typeArray( ($3).v.integer, varType), PASS_BY_REFERENCE, func);
-         } /* array_formal */ ;
-/* opt_const_expr : /* Empty | const_expr ; */
-/* array_formal : /* Empty | '[' const_expr ']' array_formal ; */
+       | T_id '[' { arrayType = varType; } opt_const_expr ']' 
+       {
+          if ( equalType(($4).t, typeVoid) ) arrayType = typeIArray(arrayType);
+          else arrayType = arrayTypeCheck( $4, arrayType );
+       } array_formal { newParameter($1, arrayType, PASS_BY_REFERENCE, func); };
+opt_const_expr : /* Empty */ { $$ = (Const) { typeVoid, 0 }; } | const_expr { $$ = $1; } ;
+array_formal : /* Empty */
+             | '[' const_expr ']'
+               { arrayType = arrayTypeCheck( $2, arrayType); } array_formal ;
 
 routine : routine_header ';' { forwardFunction(func); closeScope(); }
         | routine_header block { closeScope(); } ;
@@ -370,221 +356,6 @@ format : expr | "FORM" '(' expr ',' expr opt_format_expr ')' ;
 opt_format_expr : /* Empty */ | ',' expr ;
 
 %%
-
-/** TODO: Move all this code for type checking in a separate file */
-RepInteger applyInteger(char op, RepInteger x, RepInteger y) {
-   switch (op) {
-      case '+': return x + y;
-      case '-': return x - y;
-      case '*': return x * y;
-      case '/': return x / y;
-      case '%': return x % y;
-      case '<': return x < y;
-      case '>': return x > y;
-      case ',': return x <= y;
-      case '.': return x >= y;
-      case '=': return x == y;
-      case '!': return x != y;
-   }
-}
-
-RepChar applyChar(char op, RepChar x, RepChar y) {
-   switch (op) {
-      case '+': return x + y;
-      case '-': return x - y;
-      case '*': return x * y;
-      case '/': return x / y;
-      case '%': return x % y;
-      case '<': return x < y;
-      case '>': return x > y;
-      case ',': return x <= y;
-      case '.': return x >= y;
-      case '=': return x == y;
-      case '!': return x != y;
-   }
-}
-
-RepReal applyReal(char op, RepReal x, RepReal y) {
-   switch (op) {
-      case '+': return x + y;
-      case '-': return x - y;
-      case '*': return x * y;
-      case '/': return x / y;
-      case '<': return x < y;
-      case '>': return x > y;
-      case ',': return x <= y;
-      case '.': return x >= y;
-      case '=': return x == y;
-      case '!': return x != y;
-   }
-}
-
-RepBoolean applyBoolean(char op, RepBoolean x, RepBoolean y) {
-   switch (op) {
-      case '<': return x < y;
-      case '>': return x > y;
-      case ',': return x <= y;
-      case '.': return x >= y;
-      case '=': return x == y;
-      case '!': return x != y;
-      case '&': return x && y;
-      case '|': return x || y;
-   }
-}
-
-Const promote(Const c, Type t) {
-   Const res;
-
-   res.t = t;
-   if (equalType(t, typeInteger) && equalType(c.t, typeInteger))
-      res.v.integer = c.v.integer;
-   else if (equalType(t, typeInteger) && equalType(c.t, typeReal))
-      res.v.integer = c.v.real;
-   else if (equalType(t, typeInteger) && equalType(c.t, typeChar))
-      res.v.integer = c.v.chr;
-
-   else if (equalType(t, typeReal) && equalType(c.t, typeInteger))
-      res.v.real = c.v.integer;
-   else if (equalType(t, typeReal) && equalType(c.t, typeReal))
-      res.v.real = c.v.real;
-   else if (equalType(t, typeReal) && equalType(c.t, typeChar))
-      res.v.real = c.v.chr;
-
-   else if (equalType(t, typeChar) && equalType(c.t, typeInteger))
-      res.v.chr = c.v.integer;
-   else if (equalType(t, typeChar) && equalType(c.t, typeReal))
-      res.v.chr = c.v.real;
-   else if (equalType(t, typeChar) && equalType(c.t, typeChar))
-      res.v.chr = c.v.chr;
-
-   return res;
-}
-
-Const applyOperation(char op, Const c1, Const c2) {
-   Const cp1, cp2, result; // promoted constants
-
-   // Promote types as nessecary
-   switch (op) {
-      case '&': case '|':
-         if ( !equalType(c1.t, typeBoolean) || !equalType(c2.t, typeBoolean) )
-            error("incompatible types in operation '%c%c'", op, op); // hackia
-         cp1 = c1;
-         cp2 = c2;
-         break;
-      case '%':
-         if ( equalType(c1.t, typeReal) || equalType(c2.t, typeReal) )
-            error("operator '\%' used with real operands");
-      default:
-         if ( equalType(c1.t, typeReal) || equalType(c2.t, typeReal) ) {
-            cp1 = promote(c1, typeReal);
-            cp2 = promote(c2, typeReal);
-         } else if ( equalType(c1.t, typeInteger) || equalType(c2.t, typeInteger) ) {
-            cp1 = promote(c1, typeInteger);
-            cp2 = promote(c2, typeInteger);
-         } else if ( equalType(c1.t, typeChar) || equalType(c2.t, typeChar) ) {
-            cp1 = promote(c1, typeChar);
-            cp2 = promote(c2, typeChar);
-         } else
-            error("incompatible types in operation '%c'", op); // TODO: better error message: fix op
-         break;
-      //case '+': case '-': case '*': case '/':
-      //case '<': case '>': case '=': case '!': case ',': case '.':
-   }
-
-   if (op == '<' || op == '>' || op == '=' || op == '!' || op == ',' || op == '.')
-      result.t = typeBoolean;
-   else
-      result.t = cp1.t;
-
-   /* TODO: !!IMPORTANT!! assigning to wrong fields of a union. This should be fixed ASAP */
-   switch (cp1.t->kind) {
-      case TYPE_INTEGER:
-         result.v.integer = applyInteger(op, cp1.v.integer, cp2.v.integer);
-         break;
-      case TYPE_REAL:
-         switch (result.t->kind) {
-            case TYPE_BOOLEAN:
-               result.v.boolean = applyReal(op, cp1.v.real, cp2.v.real);
-               break;
-            case TYPE_REAL:
-               result.v.real = applyReal(op, cp1.v.real, cp2.v.real);
-               break;
-         }
-         break;
-      case TYPE_CHAR:
-         result.v.chr = applyChar(op, cp1.v.chr, cp2.v.chr);
-         break;
-      case TYPE_BOOLEAN:
-         result.v.boolean = applyBoolean(op, cp1.v.boolean, cp2.v.boolean);
-         break;
-   }
-   
-   return result;
-}
-
-void addConstant(char *name, Type t, Const c) {
-   if ( !equalType(t, typeBoolean) && !equalType( c.t, typeBoolean ) ) {
-       switch (t->kind) {
-          case TYPE_INTEGER:
-             newConstant(name, t, promote(c, t).v.integer);
-             break;
-          case TYPE_REAL:
-             newConstant(name, t, promote(c, t).v.real);
-             break;
-          case TYPE_CHAR:
-             newConstant(name, t, promote(c, t).v.chr);
-             break;
-       }
-   } else if ( equalType(t, c.t) )
-      newConstant(name, t, c.v.boolean);
-   else
-      error("incompatible types in assignment (probably involving booleans)");
-}
-
-Type unopTypeCheck(char op, Type t) {
-   if (op == '+' || op == '-') {
-      if (!equalType(t, typeInteger) && !equalType(t, typeChar) && !equalType(t, typeReal))
-         error("incompatible type in unary \'%c\' operator", op);
-   } else if (op == '!') {
-      if (!equalType(t, typeBoolean))
-         error("incompatible type in unary \'%c\' operator", op);
-   } else
-      internal("unrecognized operator passed in unopTypeCheck");
-   return t;
-}  
-
-inline int numOp(char op) { return op == '+' || op == '-' || op == '*' || op == '/'; }
-Type exprTypeCheck(char op, Type t1, Type t2) {
-   switch (op) {
-      case '&': case '|':
-         if ( !equalType(t1, typeBoolean) || !equalType(t2, typeBoolean) )
-            error("incompatible types in operation '%c%c'", op, op); // hackia
-         return typeBoolean;
-         break;
-      case '%':
-         if ( equalType(t1, typeReal) || equalType(t2, typeReal) )
-            error("operator '\%' used with real operands");
-      default:
-         if ( equalType(t1, typeReal) || equalType(t2, typeReal) )
-            return numOp(op) ? typeReal : typeBoolean;
-         else if ( equalType(t1, typeInteger) || equalType(t2, typeInteger) )
-            return numOp(op) ? typeInteger : typeBoolean;
-         else if ( equalType(t1, typeChar) || equalType(t2, typeChar) )
-            return numOp(op) ? typeChar : typeBoolean;
-         else
-            error("incompatible types in operation '%c'", op); // TODO: better error message: fix op
-         break;
-   }
-   return typeInteger; // Default action. TODO: change it
-}
-
-void addLibraryFunctions() {
-   SymbolEntry *p;
-
-   // TODO: add more library functions
-   p = newFunction("READ_INT");
-   endFunctionHeader(p, typeInteger);
-}
 
 /* flags:
       -f          : Read from standard input
