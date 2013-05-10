@@ -1,4 +1,47 @@
+#include <stdio.h>
+#include "general.h"
 #include "semantics.h"
+
+Stack pop(Stack S) {
+   Stack t;
+   t = S->next;
+   delete(S);
+   return t;
+}
+
+SymbolEntry* top(Stack S) {
+   if (S == NULL) internal("SymbolEntry Stack is empty");
+   return S->p;
+}
+
+Stack push(Stack S, SymbolEntry* p) {
+   Stack t = (Stack) new(sizeof(struct StackTag));
+
+   t->p = p;
+   t->next = S;
+   return t;
+}
+
+Stack paramCheck(Stack Func, Stack Param, Type expr) {
+   SymbolEntry *f = top(Func);
+   SymbolEntry *t = top(Param);
+
+   if (t == NULL)
+      error("Function \"%s\" needs less arguments", f->id);
+   else if ( !( (equalType(expr, typeInteger) || equalType(expr, typeChar) || equalType(expr, typeReal) ) && (equalType(t->u.eParameter.type, typeInteger) || equalType(t->u.eParameter.type, typeChar) || equalType(t->u.eParameter.type, typeReal) ) ) && !equalType(t->u.eParameter.type, expr) ) {
+      error("Type missmatch on the parameters give to the function \"%s\"", f->id);
+#ifdef DEBUG_SYMBOL
+      printf("Type missmatch ");
+      printType(t->u.eParameter.type);
+      printf(", ");
+      printType(expr);
+      printf(" on the parameters given to the function \"%s\"\n", f->id);
+#endif
+   }
+   
+   Param = pop(Param);
+   return push(Param, t->u.eParameter.next);
+}
 
 RepInteger applyInteger(char op, RepInteger x, RepInteger y) {
    switch (op) {

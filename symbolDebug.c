@@ -50,6 +50,21 @@ void printSymbolTable ()
                         printf(") : ");
                         printType(e->u.eFunction.resultType);
                         break;
+                    case ENTRY_VARIABLE:
+                        printf("[");
+                        printType(e->u.eVariable.type);
+                        printf("]");
+                        break;
+                    case ENTRY_PARAMETER:
+                        printf("[");
+                        printType(e->u.eParameter.type);
+                        printf("]");
+                        break;
+                    case ENTRY_TEMPORARY:
+                        printf("[");
+                        printType(e->u.eTemporary.type);
+                        printf("]");
+                        break;
 #ifdef SHOW_OFFSETS
                     case ENTRY_VARIABLE:
                         printf("[%d]", e->u.eVariable.offset);

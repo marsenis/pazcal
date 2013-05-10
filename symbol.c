@@ -626,8 +626,17 @@ unsigned int sizeOfType (Type type)
 
 bool equalType (Type type1, Type type2)
 {
-    if (type1->kind != type2->kind)
-        return false;
+    if (type1 == NULL || type2 == NULL) return false;
+    /*
+#ifdef DEBUG_SYMBOL
+    printf("Equating types: '");
+    printType(type1);
+    printf("' with type '");
+    printType(type2);
+    printf("'\n'");
+#endif
+    */
+
     switch (type1->kind) {
         case TYPE_ARRAY:
             if (type1->size != type2->size)
@@ -636,6 +645,8 @@ bool equalType (Type type1, Type type2)
         case TYPE_POINTER:
             return equalType(type1->refType, type2->refType);
     }
+    if (type1->kind != type2->kind)
+        return false;
     return true;        
 }
 

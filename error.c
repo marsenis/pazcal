@@ -56,8 +56,18 @@ void internal (const char * fmt, ...)
    else
       fprintf(stderr, "%s:%d: ", filename, linecount);
 
-   fprintf(stderr, "[Internal error] ");
+#ifdef __COLORS
+   fprintf(stderr, KRED "[internal error] ");
+#else
+   fprintf(stderr, "[internal error] ");
+#endif
+
    vfprintf(stderr, fmt, ap);
+
+#ifdef __COLORS
+   fprintf(stderr, KNRM);
+#endif
+
    fprintf(stderr, "\n");
    va_end(ap);
    exit(1);

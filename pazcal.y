@@ -16,6 +16,7 @@
 */
 Type constType, varType, arrayType;
 SymbolEntry *func, *p;
+Stack Func = NULL, Param = NULL;
 
 /* TODO: this definition is currently in
    symbol.h. Should be moved or use something
@@ -128,10 +129,10 @@ typedef struct {
 %left UNOP
 
 /* TODO: For Semantic Analysis:
-         ~ Type checking on expressions
+         # Type checking on expressions
          * Semantic Analysis on statements
          * break/continue only inside while/for/switch. (with special rule for switch)
-         * function call type checking
+         # function call type checking
          # array bounds checking
          ~ constants evaluation
          # add build-in functions to the outer scope
@@ -192,7 +193,14 @@ routine : routine_header ';' { forwardFunction(func); closeScope(); }
 
 program_header : "PROGRAM" T_id '(' ')' ;
 
-program : program_header block ;
+program : program_header
+         {
+#ifdef DEBUG_SYMBOL
+            printf("-------- MAIN PROGRAM ----------\n");
+            printSymbolTable();
+#endif
+         }
+            block ;
 
 type : "int"  { $$ = typeInteger; }
      | "bool" { $$ = typeBoolean; }
@@ -308,18 +316,37 @@ more_l_value : /* Empty */ { $$ = 0; }
                $$ = $4 + 1;
              }
 
-   /* unop : '+' | '-' | '!' ; */
-
-/* TODO: parameter matching and checking for functions */
-call : T_id '(' opt_call ')'
+call : T_id '(' 
       {
          p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
          if (p->entryType != ENTRY_FUNCTION)
             error("object \"%s\" is not callable", $1);
-         $$ = p->u.eFunction.resultType;
+         Func = push(Func, p);
+         Param = push(Param, p->u.eFunction.firstArgument);
+#ifdef DEBUG_SYMBOL
+         warning("Pushing param pointer %d for function \"%s\"", Param->p, p->id);
+#endif
+      } opt_call ')'
+      {
+         if ( top(Param) != NULL )
+            error("Function \"%s\" needs more arguments", (top(Func))->id);
+         $$ = (top(Func))->u.eFunction.resultType;
+         Func = pop(Func);
+         Param = pop(Param);
       };
-opt_call : /* Empty */ | expr more_opt_call
-more_opt_call : /* Empty */ | ',' expr more_opt_call ;
+
+opt_call : /* Empty */
+         | expr {
+#ifdef DEBUG_SYMBOL
+            warning("matched an argument");
+#endif
+            Param = paramCheck(Func, Param, $1); } more_opt_call ;
+more_opt_call : /* Empty */
+         | ',' expr {
+#ifdef DEBUG_SYMBOL
+            warning("matched an argument");
+#endif
+            Param = paramCheck(Func, Param, $2); } more_opt_call ;
 
 block : '{' { openScope(); } opt_block '}' { closeScope(); } ;
 opt_block : /* Empty */ | local_def opt_block | stmt opt_block ;
