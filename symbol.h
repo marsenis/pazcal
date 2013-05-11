@@ -57,7 +57,11 @@ typedef enum { false=0, true=1 } bool;
 typedef int           RepInteger;         /* Ακέραιες                  */
 typedef unsigned char RepBoolean;         /* Λογικές τιμές             */
 typedef char          RepChar;            /* Χαρακτήρες                */
-typedef long double   RepReal;            /* Πραγματικές               */
+/* Changed it from 'long double' to 'double' because of ABI warnings
+ * TODO: consider changing it back */
+typedef double   RepReal;            /* Πραγματικές               */
+/* Initially it was 'const char'
+ * TODO: put back the 'const' if needed */
 typedef char *  RepString;          /* Συμβολοσειρές             */
 
 

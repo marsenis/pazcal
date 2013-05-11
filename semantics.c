@@ -224,7 +224,7 @@ Type unopTypeCheck(char op, Type t) {
    return t;
 }  
 
-inline int numOp(char op) { return op == '+' || op == '-' || op == '*' || op == '/'; }
+int numOp(char op) { return op == '+' || op == '-' || op == '*' || op == '/'; }
 Type exprTypeCheck(char op, Type t1, Type t2) {
    switch (op) {
       case '&': case '|':

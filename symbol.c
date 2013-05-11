@@ -275,7 +275,8 @@ SymbolEntry * newConstant (const char * name, Type type, ...)
             if (equalType(type->refType, typeChar)) {
                 RepString str = va_arg(ap, RepString);
                 
-                value.vString = (const char *) new(strlen(str) + 1);
+                /* TODO: put back the 'const' if needed */
+                value.vString = (char *) new(strlen(str) + 1);
                 strcpy((char *) (value.vString), str);
                 break;
             }
@@ -303,7 +304,7 @@ SymbolEntry * newConstant (const char * name, Type type, ...)
                 strcat(buffer, "'");
                 break;
             case TYPE_REAL:
-                sprintf(buffer, "%Lg", value.vReal);
+                sprintf(buffer, "%lf", value.vReal); // TODO: if using 'long double' change it back to %Lg
                 break;
             case TYPE_ARRAY:
                 strcpy(buffer, "\"");

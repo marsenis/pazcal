@@ -1,6 +1,8 @@
 #ifndef __SEMANTICS_H
 #define __SEMANTICS_H
 
+#include "general.h"
+#include "error.h"
 #include "symbol.h"
 
 typedef struct StackTag* Stack;

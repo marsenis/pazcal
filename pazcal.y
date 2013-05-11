@@ -183,7 +183,7 @@ formal : T_id { newParameter($1, varType, PASS_BY_VALUE, func); }
           if ( equalType(($4).t, typeVoid) ) arrayType = typeIArray(arrayType);
           else arrayType = arrayTypeCheck( $4, arrayType );
        } array_formal { newParameter($1, arrayType, PASS_BY_REFERENCE, func); };
-opt_const_expr : /* Empty */ { $$ = (Const) { typeVoid, 0 }; } | const_expr { $$ = $1; } ;
+opt_const_expr : /* Empty */ { $$ = (Const) { typeVoid, {0} }; } | const_expr { $$ = $1; } ;
 array_formal : /* Empty */
              | '[' const_expr ']'
                { arrayType = arrayTypeCheck( $2, arrayType); } array_formal ;
@@ -227,7 +227,7 @@ const_expr : T_int_const { ($$).t = typeInteger; ($$).v.integer = $1; }
                    ($$).v.boolean = p->u.eConstant.value.vBoolean;
                 else if ( equalType( ($$).t, typeChar ) )
                    ($$).v.chr = p->u.eConstant.value.vChar;
-                else if ( equalType( ($$).t, typeIArray(typeChar) ) );
+                else if ( equalType( ($$).t, typeIArray(typeChar) ) )
                    ($$).v.str = p->u.eConstant.value.vString;
              }
                
