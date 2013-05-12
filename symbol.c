@@ -625,6 +625,7 @@ unsigned int sizeOfType (Type type)
     return 0;
 }
 
+/* If comparing Array with IArray, the IArray should be type 1 */
 bool equalType (Type type1, Type type2)
 {
     if (type1 == NULL || type2 == NULL) return false;
@@ -649,6 +650,12 @@ bool equalType (Type type1, Type type2)
     if (type1->kind != type2->kind)
         return false;
     return true;        
+}
+
+/* 'int', 'REAL' and 'char' are compattible types because
+ * each one of them can be casted to any other */
+bool compatibleTypes(Type t1, Type t2) {
+   return ( (equalType(t1, typeInteger) || equalType(t1, typeChar) || equalType(t1, typeReal)) && (equalType(t2, typeInteger) || equalType(t2, typeChar) || equalType(t2, typeReal) ) ) || equalType(t1, t2);
 }
 
 void printType (Type type)

@@ -21,6 +21,7 @@ void addConstant(char *, Type, Const);
 Type arrayTypeCheck(Const, Type);
 Type exprTypeCheck(char, Type, Type);
 Type unopTypeCheck(char, Type);
+char aritheticType(Type);
 
 Stack paramCheck(Stack, Stack, Type);
 

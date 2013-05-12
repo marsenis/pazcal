@@ -1,0 +1,23 @@
+FUNC bool something() { return true; }
+
+PROGRAM test() {
+   int x;
+
+   // Test 1;
+   switch (x) {
+      case 1:
+         while (true)
+            if (something()) break;   // OK -- break the loop
+         break;                       // exit the switch
+   }
+
+
+   // Test 2
+   while (true) {
+      switch (x) {
+         case 1:
+            if (something()) break;   // WRONG -- break nested in switch!
+         break;
+      }
+   }
+}

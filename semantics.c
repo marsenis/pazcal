@@ -2,6 +2,7 @@
 #include "general.h"
 #include "semantics.h"
 
+/* Stacks */
 Stack pop(Stack S) {
    Stack t;
    t = S->next;
@@ -28,8 +29,9 @@ Stack paramCheck(Stack Func, Stack Param, Type expr) {
 
    if (t == NULL)
       error("Function \"%s\" needs less arguments", f->id);
-   else if ( !( (equalType(expr, typeInteger) || equalType(expr, typeChar) || equalType(expr, typeReal) ) && (equalType(t->u.eParameter.type, typeInteger) || equalType(t->u.eParameter.type, typeChar) || equalType(t->u.eParameter.type, typeReal) ) ) && !equalType(t->u.eParameter.type, expr) ) {
-      error("Type missmatch on the parameters give to the function \"%s\"", f->id);
+   else if ( !compatibleTypes(t->u.eParameter.type, expr)) {
+   //else if ( !( (equalType(expr, typeInteger) || equalType(expr, typeChar) || equalType(expr, typeReal) ) && (equalType(t->u.eParameter.type, typeInteger) || equalType(t->u.eParameter.type, typeChar) || equalType(t->u.eParameter.type, typeReal) ) ) && !equalType(t->u.eParameter.type, expr) ) {
+      error("Type missmatch on the parameters given to the function \"%s\"", f->id);
 #ifdef DEBUG_SYMBOL
       printf("Type missmatch ");
       printType(t->u.eParameter.type);
@@ -41,6 +43,10 @@ Stack paramCheck(Stack Func, Stack Param, Type expr) {
    
    Param = pop(Param);
    return push(Param, t->u.eParameter.next);
+}
+
+char aritheticType(Type t) {
+   return equalType(t, typeInteger) || equalType(t, typeReal) || equalType(t, typeChar);
 }
 
 RepInteger applyInteger(char op, RepInteger x, RepInteger y) {
@@ -224,7 +230,7 @@ Type unopTypeCheck(char op, Type t) {
    return t;
 }  
 
-int numOp(char op) { return op == '+' || op == '-' || op == '*' || op == '/'; }
+int numOp(char op) { return op == '+' || op == '-' || op == '*' || op == '/' || op == '%'; }
 Type exprTypeCheck(char op, Type t1, Type t2) {
    switch (op) {
       case '&': case '|':

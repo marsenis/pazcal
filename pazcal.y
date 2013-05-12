@@ -17,6 +17,12 @@
 Type constType, varType, arrayType;
 SymbolEntry *func, *p;
 Stack Func = NULL, Param = NULL;
+int openLoops = 0;
+unsigned long long cannotBreak = 0; // Used as bitwise stack of boolean values
+#define PUSH_LOOP   cannotBreak = (cannotBreak << 1); openLoops++
+#define POP_LOOP    cannotBreak >>= 1; openLoops--
+#define PUSH_SWITCH cannotBreak = (cannotBreak << 1) | 1
+#define POP_SWITCH  cannotBreak >>= 1
 
 /* TODO: this definition is currently in
    symbol.h. Should be moved or use something
@@ -100,14 +106,16 @@ typedef struct {
 %token<chr>     T_char_const
 %token<str>     T_string_literal
 
-%type<t> type
-%type<t> proc_func
-%type<cnst> const_expr
-%type<cnst> opt_const_expr
-%type<t> expr
-%type<t> l_value;
+%type<t>       type
+%type<t>       proc_func
+%type<cnst>    const_expr
+%type<cnst>    opt_const_expr
+%type<t>       expr
+%type<t>       l_value;
+%type<integer> assign
 %type<integer> more_l_value;
-%type<t> call
+%type<t>       call
+%type<t>       opt_expr
 
 /* Assosiativity and precedence of operators */
 /* %nonassoc '=' "++" "--" "+=" "-=" "*=" "/=" "%=" */
@@ -130,13 +138,15 @@ typedef struct {
 
 /* TODO: For Semantic Analysis:
          # Type checking on expressions
-         * Semantic Analysis on statements
-         * break/continue only inside while/for/switch. (with special rule for switch)
+         # Semantic Analysis on statements
+         # break/continue only inside while/for/switch. (with special rule for switch)
          # function call type checking
          # array bounds checking
          ~ constants evaluation
          # add build-in functions to the outer scope
          # multidimensional arrays
+
+         ** CODE CLEANUP **
 */
 %%
 
@@ -353,25 +363,82 @@ opt_block : /* Empty */ | local_def opt_block | stmt opt_block ;
 
 local_def : const_def | var_def ;
 
-stmt : ';' | l_value assign expr ';' | l_value pm ';' | call ';'
-     | "if" '(' expr ')' stmt | "if" '(' expr ')' stmt "else" stmt | "while" '(' expr ')' stmt
-     | "FOR" '(' T_id ',' range ')' stmt | "do" stmt "while" '(' expr ')' ';'
-     | "switch" '(' expr ')' '{' opt_case_clause opt_default_clause '}'
-     | "break" ';' | "continue" ';' | "return" opt_expr ';'
-     | write '(' opt_format ')' ';' | block;
+stmt : ';'
+      | l_value assign expr ';'
+      {
+         if (!compatibleTypes($1, $3)) { error("type mismatch on assignment"); printMismatch($1, $3); }
+         if ($2 != 1 && !aritheticType($1)) error("this assignment operator only works on arithmetic types");
+      }
+      | l_value pm ';' { if (!aritheticType($1)) error("increment/decrement operators only work on arithmetic types"); }
+      | call ';' { if (!equalType($1, typeVoid)) warning("ignoring function result"); }
+      | "if" '(' expr ')'  stmt { if (!equalType($3, typeBoolean)) error("condition of the 'if' statement is not a boolean"); }
+      | "if" '(' expr ')' stmt "else" stmt { if (!equalType($3, typeBoolean)) error("condition of the 'if-else' statement is not a boolean"); }
+      | "while" '(' expr ')'
+      {
+         PUSH_LOOP;
+         if (!equalType($3, typeBoolean))
+            error("condition of the 'while' statement is not a boolean");
+      } stmt { POP_LOOP; }
+      | "FOR" '(' T_id ','
+         {
+            p = lookupEntry($3, LOOKUP_ALL_SCOPES, true);
+            if (p->entryType == ENTRY_FUNCTION) error("identifier not a variable");
+            else if ( !( (p->entryType == ENTRY_CONSTANT && equalType(p->u.eConstant.type, typeInteger) )
+                   || (p->entryType == ENTRY_VARIABLE && equalType(p->u.eVariable.type, typeInteger) )
+                   || (p->entryType == ENTRY_PARAMETER && equalType(p->u.eParameter.type, typeInteger) ) ) )
+               error("control variable in FOR statement is not an integer");
+         }
+         range ')' { PUSH_LOOP; } stmt { POP_LOOP; }
+      | "do" { PUSH_LOOP; } stmt "while" '(' expr ')' ';'
+      {
+         if (!equalType($6, typeBoolean))
+            error("condition of the 'do-while' statement is not a boolean");
+         POP_LOOP;
+      }
+      | "switch" '(' expr ')'
+      {
+         PUSH_SWITCH;
+         if (!equalType($3, typeInteger))
+            error("switch expression is not an integer");
+      }
+      '{' opt_case_clause opt_default_clause '}' { POP_SWITCH; cannotBreak >>= 1; }
+      | "break" ';' { if ((cannotBreak & 1)) error("break cannot be used in this context"); }
+      | "continue" ';' { if (!openLoops) error("continue used outside of a loop"); }
+      | "return" opt_expr ';' { if (!compatibleTypes($2, func->u.eFunction.resultType)) error("Incompatible types in return statement"); }
+      | write '(' opt_format ')' ';'
+      | block;
 pm : "++" | "--" ;
 opt_case_clause : /* Empty */ | "case" const_expr ':' more_case clause opt_case_clause;
 more_case : /* Empty */ | "case" const_expr ':' more_case ;
 opt_default_clause : /* Empty */ | "default" ':' clause ;
-opt_expr : /* Empty */ | expr ;
+opt_expr : /* Empty */ { $$ = typeVoid; } | expr { $$ = $1; };
 opt_format : /* Empty */ | format more_format ;
 more_format : /* Empty */ | ',' format more_format ;
 
-assign : '=' | "+=" | "-=" | "*=" | "/=" | "%=" ;
+assign : '='  { $$ = 1; }
+       | "+=" { $$ = 0; }
+       | "-=" { $$ = 0; }
+       | "*=" { $$ = 0; }
+       | "/=" { $$ = 0; }
+       | "%=" { $$ = 0; };
 
-range : expr to_downto expr opt_step ;
+range : expr
+      {
+         if (!equalType($1, typeInteger) )
+            error("range expression in FOR statement is not an integer");
+      }
+      to_downto expr
+      {
+         if (!equalType($4, typeInteger) )
+            error("range expression in FOR statement is not an integer");
+      }
+      opt_step ;
 to_downto : "TO" | "DOWNTO" ;
-opt_step : /* Empty */ | "STEP" expr ;
+opt_step : /* Empty */ | "STEP" expr 
+         {
+            if (!equalType($2, typeInteger) )
+               error("step expression in FOR statement is not an integer");
+         };
 
 clause : more_clause opt_clause ;
 more_clause : /* Empty */ %prec SWITCH_BRK | stmt more_clause ;
@@ -379,6 +446,7 @@ opt_clause : "break" ';' | "NEXT" ';' ;
 
 write : "WRITE" | "WRITELN" | "WRITESP" | "WRITESPLN" ;
 
+/* : type check these */
 format : expr | "FORM" '(' expr ',' expr opt_format_expr ')' ;
 opt_format_expr : /* Empty */ | ',' expr ;
 

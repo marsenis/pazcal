@@ -86,3 +86,14 @@ void printSymbolTable ()
         }
     printf("----------------------------------------\n");
 }
+
+void printMismatch(Type t1, Type t2) {
+#ifdef DEBUG_SYMBOL
+   printf("Type missmatch ");
+   printType(t1);
+   printf(", ");
+   printType(t2);
+   printf("\n");
+#endif
+   return;
+}

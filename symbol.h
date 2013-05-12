@@ -234,6 +234,9 @@ void          printMode          (PassMode mode);
 
 /* Added for debugging. It's defined in symbolDebug.c */
 void          printSymbolTable   ();
+void          printMismatch      ();
+
+/* Added by Makis Arsenis <marsenis@gmail.com> */
 
 /* Temporary. TODO: MOVE IT */
 typedef struct {
@@ -246,5 +249,7 @@ typedef struct {
       RepString  str;
    } v;
 } Const;
+
+bool        compatibleTypes(Type t1, Type t2);
 
 #endif
