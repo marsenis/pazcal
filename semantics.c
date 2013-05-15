@@ -2,7 +2,10 @@
 #include "general.h"
 #include "semantics.h"
 
-/* Stacks */
+/* Stacks used for maintaining inheritted attributes
+ * in the SDT schemas. Specificaly, the stacks can hold
+ * SymbolEntry pointers.
+**/
 Stack pop(Stack S) {
    Stack t;
    t = S->next;
@@ -49,173 +52,251 @@ char aritheticType(Type t) {
    return equalType(t, typeInteger) || equalType(t, typeReal) || equalType(t, typeChar);
 }
 
-RepInteger applyInteger(char op, RepInteger x, RepInteger y) {
+RepTypes applyInteger(char op, RepInteger x, RepInteger y) {
    switch (op) {
-      case '+': return x + y;
-      case '-': return x - y;
-      case '*': return x * y;
-      case '/': return x / y;
-      case '%': return x % y;
-      case '<': return x < y;
-      case '>': return x > y;
-      case ',': return x <= y;
-      case '.': return x >= y;
-      case '=': return x == y;
-      case '!': return x != y;
+      case '+': return (RepTypes) ( x + y  );
+      case '-': return (RepTypes) ( x - y  );
+      case '*': return (RepTypes) ( x * y  );
+      case '/': return (RepTypes) ( x / y  );
+      case '%': return (RepTypes) ( x % y  );
+      case '<': return (RepTypes) ( x < y  );
+      case '>': return (RepTypes) ( x > y  );
+      case ',': return (RepTypes) ( x <= y );
+      case '.': return (RepTypes) ( x >= y );
+      case '=': return (RepTypes) ( x == y );
+      case '!': return (RepTypes) ( x != y );
    }
+   return (RepTypes) 0;
 }
 
-RepChar applyChar(char op, RepChar x, RepChar y) {
+RepTypes applyChar(char op, RepChar x, RepChar y) {
    switch (op) {
-      case '+': return x + y;
-      case '-': return x - y;
-      case '*': return x * y;
-      case '/': return x / y;
-      case '%': return x % y;
-      case '<': return x < y;
-      case '>': return x > y;
-      case ',': return x <= y;
-      case '.': return x >= y;
-      case '=': return x == y;
-      case '!': return x != y;
+      case '+': return (RepTypes) ( x + y  );
+      case '-': return (RepTypes) ( x - y  );
+      case '*': return (RepTypes) ( x * y  );
+      case '/': return (RepTypes) ( x / y  );
+      case '%': return (RepTypes) ( x % y  );
+      case '<': return (RepTypes) ( x < y  );
+      case '>': return (RepTypes) ( x > y  );
+      case ',': return (RepTypes) ( x <= y );
+      case '.': return (RepTypes) ( x >= y );
+      case '=': return (RepTypes) ( x == y );
+      case '!': return (RepTypes) ( x != y );
    }
+   return (RepTypes) 0;
 }
 
-RepReal applyReal(char op, RepReal x, RepReal y) {
+RepTypes applyReal(char op, RepReal x, RepReal y) {
    switch (op) {
-      case '+': return x + y;
-      case '-': return x - y;
-      case '*': return x * y;
-      case '/': return x / y;
-      case '<': return x < y;
-      case '>': return x > y;
-      case ',': return x <= y;
-      case '.': return x >= y;
-      case '=': return x == y;
-      case '!': return x != y;
+      case '+': return (RepTypes) ( x + y );
+      case '-': return (RepTypes) ( x - y );
+      case '*': return (RepTypes) ( x * y );
+      case '/': return (RepTypes) ( x / y );
+      case '<': return (RepTypes) ( x < y );
+      case '>': return (RepTypes) ( x > y );
+      case ',': return (RepTypes) ( x <= y );
+      case '.': return (RepTypes) ( x >= y );
+      case '=': return (RepTypes) ( x == y );
+      case '!': return (RepTypes) ( x != y );
    }
+   return (RepTypes) 0;
 }
 
-RepBoolean applyBoolean(char op, RepBoolean x, RepBoolean y) {
+RepTypes applyBoolean(char op, RepBoolean x, RepBoolean y) {
    switch (op) {
-      case '<': return x < y;
-      case '>': return x > y;
-      case ',': return x <= y;
-      case '.': return x >= y;
-      case '=': return x == y;
-      case '!': return x != y;
-      case '&': return x && y;
-      case '|': return x || y;
+      case '=': return (RepTypes) ( x == y );
+      case '!': return (RepTypes) ( x != y );
+      case '&': return (RepTypes) ( x && y );
+      case '|': return (RepTypes) ( x || y );
    }
+   return (RepTypes) 0;
 }
 
 Const promote(Const c, Type t) {
    Const res;
 
-   res.t = t;
-   if (equalType(t, typeInteger) && equalType(c.t, typeInteger))
-      res.v.integer = c.v.integer;
-   else if (equalType(t, typeInteger) && equalType(c.t, typeReal))
-      res.v.integer = c.v.real;
-   else if (equalType(t, typeInteger) && equalType(c.t, typeChar))
-      res.v.integer = c.v.chr;
+   res.type = t;
+   if (equalType(t, typeInteger)) {
 
-   else if (equalType(t, typeReal) && equalType(c.t, typeInteger))
-      res.v.real = c.v.integer;
-   else if (equalType(t, typeReal) && equalType(c.t, typeReal))
-      res.v.real = c.v.real;
-   else if (equalType(t, typeReal) && equalType(c.t, typeChar))
-      res.v.real = c.v.chr;
+      if (equalType(c.type, typeInteger))
+         res.value.vInteger = c.value.vInteger;
+      else if (equalType(c.type, typeChar))
+         res.value.vInteger = (RepInteger) c.value.vChar;
+      else if (equalType(c.type, typeReal))
+         res.value.vInteger = (RepInteger) c.value.vReal;
 
-   else if (equalType(t, typeChar) && equalType(c.t, typeInteger))
-      res.v.chr = c.v.integer;
-   else if (equalType(t, typeChar) && equalType(c.t, typeReal))
-      res.v.chr = c.v.real;
-   else if (equalType(t, typeChar) && equalType(c.t, typeChar))
-      res.v.chr = c.v.chr;
+   } else if (equalType(t, typeChar)) {
+
+      if (equalType(c.type, typeInteger))
+         res.value.vChar = (RepInteger) c.value.vInteger;
+      else if (equalType(c.type, typeChar))
+         res.value.vChar = c.value.vChar;
+      else if (equalType(c.type, typeReal))
+         res.value.vChar = (RepChar) c.value.vReal;
+
+   } else if (equalType(t, typeReal)) {
+
+      if (equalType(c.type, typeInteger))
+         res.value.vReal = (RepReal) c.value.vInteger;
+      else if (equalType(c.type, typeChar))
+         res.value.vReal = (RepReal) c.value.vChar;
+      else if (equalType(c.type, typeReal))
+         res.value.vReal = c.value.vReal;
+   } else
+      return c;
 
    return res;
+}
+
+const char* show(char op) {
+   switch (op) {
+      case '+': return "+"  ;
+      case '-': return "-"  ;
+      case '*': return "*"  ;
+      case '/': return "/"  ;
+      case '%': return "%"  ;
+      case '<': return "<"  ;
+      case '>': return ">"  ;
+      case ',': return "<=" ;
+      case '.': return ">=" ;
+      case '=': return "==" ;
+      case '!': return "!=" ;
+      case '&': return "and";
+      case '|': return "or" ;
+   }
+   return "undefined";
+}
+Type generalType(Type t1, Type t2) {
+   if (equalType(t1, typeReal) || equalType(t2, typeReal)) return typeReal;
+   else if (equalType(t1, typeInteger) || equalType(t2, typeInteger)) return typeInteger;
+   else if (equalType(t1, typeChar) || equalType(t2, typeChar)) return typeChar;
+   else return typeVoid;
+}
+
+Type compatibleOperants(char op, Type t1) {
+   switch(op) {
+      case '&': case '|':
+         if (!equalType(t1, typeBoolean))
+            error("incompatible types of operants in operation '%s'", show(op));
+         return t1;
+      case '%':
+         if (!equalType(t1, typeInteger) && !equalType(t1, typeChar))
+            error("incompatible types of operants in operation '%s'", show(op));
+         return t1;
+      case '<': case '>': case ',': case '.': case '=': case '!':
+         if (!equalType(t1, typeInteger) && !equalType(t1, typeChar) && !equalType(t1, typeReal))
+            error("incompatible types of operants in operation '%s'", show(op));
+         return typeBoolean;
+      default:
+         if (!equalType(t1, typeInteger) && !equalType(t1, typeChar) && !equalType(t1, typeReal))
+            error("incompatible types of operants in operation '%s'", show(op));
+         return t1;
+   }
+   return typeVoid;
+}
+
+Const applyUnop(char op, Const c1) {
+   switch (op) {
+      case '+':
+         if (!equalType(c1.type, typeInteger) && !equalType(c1.type, typeChar) && !equalType(c1.type, typeReal))
+            error("incompatible type in unary operator '+'");
+         return c1;
+      case '-':
+         if (equalType(c1.type, typeInteger))
+            return (Const) { typeInteger, { (RepInteger) (- c1.value.vInteger) } };
+         else if (equalType(c1.type, typeChar))
+            return (Const) { typeChar, { (RepChar) (- c1.value.vChar) } };
+         else if (equalType(c1.type, typeReal))
+            return (Const) { typeReal, { (RepReal) (- c1.value.vReal) } };
+         else
+            error("incompatible type in unary operator '-'");
+         break;
+      case '!':
+         if (!equalType(c1.type, typeBoolean))
+            error("incompatible type in unary operator 'not'");
+         return (Const) { typeBoolean, { (RepBoolean) (! c1.value.vBoolean) } };
+   }
+
+   return (Const) { typeVoid, {0} };
 }
 
 Const applyOperation(char op, Const c1, Const c2) {
    Const cp1, cp2, result; // promoted constants
 
-   // Promote types as nessecary
-   switch (op) {
-      case '&': case '|':
-         if ( !equalType(c1.t, typeBoolean) || !equalType(c2.t, typeBoolean) )
-            error("incompatible types in operation '%c%c'", op, op); // hackia
-         cp1 = c1;
-         cp2 = c2;
-         break;
-      case '%':
-         if ( equalType(c1.t, typeReal) || equalType(c2.t, typeReal) )
-            error("operator '\%' used with real operands");
-      default:
-         if ( equalType(c1.t, typeReal) || equalType(c2.t, typeReal) ) {
-            cp1 = promote(c1, typeReal);
-            cp2 = promote(c2, typeReal);
-         } else if ( equalType(c1.t, typeInteger) || equalType(c2.t, typeInteger) ) {
-            cp1 = promote(c1, typeInteger);
-            cp2 = promote(c2, typeInteger);
-         } else if ( equalType(c1.t, typeChar) || equalType(c2.t, typeChar) ) {
-            cp1 = promote(c1, typeChar);
-            cp2 = promote(c2, typeChar);
-         } else
-            error("incompatible types in operation '%c'", op); // TODO: better error message: fix op
-         break;
-      //case '+': case '-': case '*': case '/':
-      //case '<': case '>': case '=': case '!': case ',': case '.':
+#ifdef DEBUG_SYMBOL
+   printf("Handling operator '%s' with operants: ", show(op));
+   printType(c1.type);
+   printf(" ");
+   printType(c2.type);
+   printf("\n");
+#endif
+
+   // Type cheking and promotion as nessecary
+   if (!compatibleTypes(c1.type, c2.type)) {
+      error("incompatible types of operants in operation '%s'", show(op));
+      return (Const) { typeVoid, {0} };
+   } else if (equalType(c1.type, c2.type)) {
+      cp1 = c1;
+      cp2 = c2;
+   } else {
+      Type genType = generalType(c1.type, c2.type);
+#ifdef DEBUG_SYMBOL
+      printf("GenType = ");
+      printType(genType);
+      printf("\n");
+#endif
+      cp1 = promote(c1, genType);
+      cp2 = promote(c2, genType);
    }
 
-   if (op == '<' || op == '>' || op == '=' || op == '!' || op == ',' || op == '.')
-      result.t = typeBoolean;
-   else
-      result.t = cp1.t;
-
-   /* TODO: !!IMPORTANT!! assigning to wrong fields of a union. This should be fixed ASAP */
-   switch (cp1.t->kind) {
-      case TYPE_INTEGER:
-         result.v.integer = applyInteger(op, cp1.v.integer, cp2.v.integer);
-         break;
-      case TYPE_REAL:
-         switch (result.t->kind) {
-            case TYPE_BOOLEAN:
-               result.v.boolean = applyReal(op, cp1.v.real, cp2.v.real);
-               break;
-            case TYPE_REAL:
-               result.v.real = applyReal(op, cp1.v.real, cp2.v.real);
-               break;
-         }
-         break;
-      case TYPE_CHAR:
-         result.v.chr = applyChar(op, cp1.v.chr, cp2.v.chr);
-         break;
-      case TYPE_BOOLEAN:
-         result.v.boolean = applyBoolean(op, cp1.v.boolean, cp2.v.boolean);
-         break;
+   result.type = compatibleOperants(op, cp1.type);
+   if ( equalType(result.type, typeVoid) ) {
+      error("incompatible types of operants in operation '%s'", show(op));
+      return (Const) { typeVoid, {0} };
    }
-   
+
+#ifdef DEBUG_SYMBOL
+   if (equalType(cp1.type, typeReal))
+      warning("handling real constants %lf and %lf", cp1.value.vReal, cp2.value.vReal);
+   else if (equalType(cp1.type, typeBoolean))
+      warning("handling boolean constants %c and %c", cp1.value.vBoolean ? 't' : 'f', cp2.value.vBoolean ? 't' : 'f');
+#endif
+
+   if ( equalType(cp1.type, typeInteger) )
+      result.value = applyInteger(op, cp1.value.vInteger, cp2.value.vInteger);
+   else if ( equalType(cp1.type, typeChar) )
+      result.value = applyChar(op, cp1.value.vChar, cp2.value.vChar);
+   else if ( equalType(cp1.type, typeReal) )
+      result.value = applyReal(op, cp1.value.vReal, cp2.value.vReal);
+   else if ( equalType(cp1.type, typeBoolean) )
+      result.value = applyBoolean(op, cp1.value.vBoolean, cp2.value.vBoolean);
+
+#ifdef DEBUG_SYMBOL
+   if (equalType(result.type, typeReal))
+      warning("result = %lf", result.value.vReal);
+   else if (equalType(result.type, typeBoolean))
+      warning("result = %s", result.value.vBoolean ? "true" : "false");
+#endif
    return result;
+
 }
 
 void addConstant(char *name, Type t, Const c) {
-   if ( !equalType(t, typeBoolean) && !equalType( c.t, typeBoolean ) ) {
-       switch (t->kind) {
-          case TYPE_INTEGER:
-             newConstant(name, t, promote(c, t).v.integer);
-             break;
-          case TYPE_REAL:
-             newConstant(name, t, promote(c, t).v.real);
-             break;
-          case TYPE_CHAR:
-             newConstant(name, t, promote(c, t).v.chr);
-             break;
-       }
-   } else if ( equalType(t, c.t) )
-      newConstant(name, t, c.v.boolean);
+   Const cp;
+
+   if (!compatibleTypes(t, c.type))
+      error("incompatible types in assignment");
    else
-      error("incompatible types in assignment (probably involving booleans)");
+      cp = promote(c, t);
+
+   if (equalType(t, typeBoolean))
+       newConstant(name, t, cp.value.vBoolean);
+   else if (equalType(t, typeInteger))
+       newConstant(name, t, cp.value.vInteger);
+   else if (equalType(t, typeChar))
+       newConstant(name, t, cp.value.vChar);
+   else if (equalType(t, typeReal))
+       newConstant(name, t, cp.value.vReal);
 }
 
 Type unopTypeCheck(char op, Type t) {
@@ -239,9 +320,11 @@ Type exprTypeCheck(char op, Type t1, Type t2) {
          return typeBoolean;
          break;
       case '%':
+         // TODO: use arithmeticType
          if ( equalType(t1, typeReal) || equalType(t2, typeReal) )
             error("operator '\%' used with real operands");
       default:
+         // TODO: consider arrays
          if ( equalType(t1, typeReal) || equalType(t2, typeReal) )
             return numOp(op) ? typeReal : typeBoolean;
          else if ( equalType(t1, typeInteger) || equalType(t2, typeInteger) )
@@ -256,15 +339,16 @@ Type exprTypeCheck(char op, Type t1, Type t2) {
 }
 
 Type arrayTypeCheck(Const c, Type arrayType) {
-   if ( equalType( c.t, typeChar) ) {
-      if ( c.v.chr < 0 ) error("negative array size");
-      return typeArray( c.v.chr, arrayType );
-   } else if ( equalType( c.t, typeInteger) ) {
-      if ( c.v.integer < 0 ) error("negative array size");
-      return typeArray( c.v.integer, arrayType );
+   if ( equalType( c.type, typeChar) ) {
+      if ( c.value.vChar < 0 ) error("negative array size");
+      return typeArray( c.value.vChar, arrayType );
+   } else if ( equalType( c.type, typeInteger) ) {
+      if ( c.value.vInteger < 0 ) error("negative array size");
+      return typeArray( c.value.vInteger, arrayType );
    }
    else
       error("array size not an integer"); // TODO: better error message for multiple dimensions
+   return typeVoid;
 }
 
 void addLibraryFunctions() {

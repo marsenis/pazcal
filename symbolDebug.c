@@ -28,7 +28,7 @@ void printSymbolTable ()
                     if ( equalType( e->u.eConstant.type, typeInteger ) )
                        printf("%s[%d]", e->id, e->u.eConstant.value.vInteger);
                     else if ( equalType( e->u.eConstant.type, typeBoolean ) )
-                       printf("%s[%i]", e->id, e->u.eConstant.value.vBoolean);
+                       printf("%s[%s]", e->id, e->u.eConstant.value.vBoolean ? "true" : "false");
                     else if ( equalType( e->u.eConstant.type, typeReal ) )
                        printf("%s[%lf]", e->id, e->u.eConstant.value.vReal);
                     else if ( equalType( e->u.eConstant.type, typeChar ) )

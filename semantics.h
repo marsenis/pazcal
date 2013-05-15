@@ -5,6 +5,7 @@
 #include "error.h"
 #include "symbol.h"
 
+// Stacks used for inheritted atributes in SDT shemas.
 typedef struct StackTag* Stack;
 struct StackTag {
    SymbolEntry *p;
@@ -15,6 +16,7 @@ Stack pop(Stack);
 SymbolEntry* top(Stack);
 Stack push(Stack, SymbolEntry*);
 
+Const applyUnop(char, Const);
 Const applyOperation(char, Const, Const);
 void addConstant(char *, Type, Const);
 

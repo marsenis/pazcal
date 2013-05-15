@@ -104,6 +104,18 @@ typedef enum {
    PASS_BY_REFERENCE                     /* Κατ' αναφορά               */
 } PassMode;
 
+// Added by marsenis.
+typedef union {                              /* Τιμή                  */
+   RepInteger vInteger;              /*    ακέραια            */
+   RepBoolean vBoolean;              /*    λογική             */
+   RepChar    vChar;                 /*    χαρακτήρας         */
+   RepReal    vReal;                 /*    πραγματική         */
+   RepString  vString;               /*    συμβολοσειρά       */
+} RepTypes;
+typedef struct {                        /******** Σταθερά ********/
+   Type          type;                  /* Τύπος                 */
+   RepTypes      value;
+} Const;
 
 /* Τύπος εγγραφής στον πίνακα συμβόλων */
 
@@ -124,16 +136,23 @@ struct SymbolEntry_tag {
          int           offset;                /* Offset στο Ε.Δ.       */
       } eVariable;
 
-      struct {                                /******** Σταθερά ********/
-         Type          type;                  /* Τύπος                 */
-         union {                              /* Τιμή                  */
-            RepInteger vInteger;              /*    ακέραια            */
-            RepBoolean vBoolean;              /*    λογική             */
-            RepChar    vChar;                 /*    χαρακτήρας         */
-            RepReal    vReal;                 /*    πραγματική         */
-            RepString  vString;               /*    συμβολοσειρά       */
-         } value;
-      } eConstant;
+      // Modified by marsenis <marsenis@gmail.com>
+      // It is more convenient to have a common
+      // data type for Constants in the symbol table
+      // and the main program during the evaluation
+      // of constants at compilation time
+      Const eConstant;
+      //struct {                                /******** Σταθερά ********/
+      //   Type          type;                  /* Τύπος                 */
+      //   
+      //   union {                              /* Τιμή                  */
+      //      RepInteger vInteger;              /*    ακέραια            */
+      //      RepBoolean vBoolean;              /*    λογική             */
+      //      RepChar    vChar;                 /*    χαρακτήρας         */
+      //      RepReal    vReal;                 /*    πραγματική         */
+      //      RepString  vString;               /*    συμβολοσειρά       */
+      //   } value;
+      //} eConstant;
 
       struct {                                /******* Συνάρτηση *******/
          bool          isForward;             /* Δήλωση forward        */
@@ -235,20 +254,6 @@ void          printMode          (PassMode mode);
 /* Added for debugging. It's defined in symbolDebug.c */
 void          printSymbolTable   ();
 void          printMismatch      ();
-
-/* Added by Makis Arsenis <marsenis@gmail.com> */
-
-/* Temporary. TODO: MOVE IT */
-typedef struct {
-   Type t;
-   union {
-      RepInteger integer;
-      RepBoolean boolean;
-      RepChar    chr;
-      RepReal    real;
-      RepString  str;
-   } v;
-} Const;
 
 bool        compatibleTypes(Type t1, Type t2);
 

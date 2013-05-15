@@ -24,25 +24,6 @@ unsigned long long cannotBreak = 0; // Used as bitwise stack of boolean values
 #define PUSH_SWITCH cannotBreak = (cannotBreak << 1) | 1
 #define POP_SWITCH  cannotBreak >>= 1
 
-/* TODO: this definition is currently in
-   symbol.h. Should be moved or use something
-   else instead
-   TODO: consider using lvalue struct from
-   alan implementation
-*/
-/*
-typedef struct {
-   Type t;
-   union {
-      RepInteger integer;
-      RepBoolean boolean;
-      RepChar    chr;
-      RepReal    real;
-      RepString  str;
-   } v;
-} Const;
-*/
-
 %}
 
 %union {
@@ -117,9 +98,6 @@ typedef struct {
 %type<t>       call
 %type<t>       opt_expr
 
-/* Assosiativity and precedence of operators */
-/* %nonassoc '=' "++" "--" "+=" "-=" "*=" "/=" "%=" */
-
 /* Fixes dangling else shift/reduce */
 %nonassoc ')'
 %nonassoc "else"
@@ -142,7 +120,7 @@ typedef struct {
          # break/continue only inside while/for/switch. (with special rule for switch)
          # function call type checking
          # array bounds checking
-         ~ constants evaluation
+         # constants evaluation
          # add build-in functions to the outer scope
          # multidimensional arrays
 
@@ -190,7 +168,7 @@ formal : T_id { newParameter($1, varType, PASS_BY_VALUE, func); }
        | '&' T_id { newParameter($2, varType, PASS_BY_REFERENCE, func); }
        | T_id '[' { arrayType = varType; } opt_const_expr ']' 
        {
-          if ( equalType(($4).t, typeVoid) ) arrayType = typeIArray(arrayType);
+          if ( equalType(($4).type, typeVoid) ) arrayType = typeIArray(arrayType);
           else arrayType = arrayTypeCheck( $4, arrayType );
        } array_formal { newParameter($1, arrayType, PASS_BY_REFERENCE, func); };
 opt_const_expr : /* Empty */ { $$ = (Const) { typeVoid, {0} }; } | const_expr { $$ = $1; } ;
@@ -217,46 +195,25 @@ type : "int"  { $$ = typeInteger; }
      | "char" { $$ = typeChar; }
      | "REAL" { $$ = typeReal; } ;
 
-const_expr : T_int_const { ($$).t = typeInteger; ($$).v.integer = $1; }
-           | T_float_const { ($$).t = typeReal; ($$).v.real = $1; }
-           | T_char_const { ($$).t = typeChar; ($$).v.chr = $1; }
-           | T_string_literal { ($$).t = typeIArray(typeChar); ($$).v.str = $1; }
-           | "true" { ($$).t = typeBoolean; ($$).v.boolean = 1; }
-           | "false" { ($$).t = typeBoolean; ($$).v.boolean = 0; }
+const_expr : T_int_const        { ($$).type = typeInteger; ($$).value.vInteger = $1; }
+           | T_float_const      { ($$).type = typeReal; ($$).value.vReal = $1; }
+           | T_char_const       { ($$).type = typeChar; ($$).value.vChar = $1; }
+           | T_string_literal   { ($$).type = typeIArray(typeChar); ($$).value.vString = $1; }
+           | "true"             { ($$).type = typeBoolean; ($$).value.vBoolean = true; }
+           | "false"            { ($$).type = typeBoolean; ($$).value.vBoolean = false; }
            | '(' const_expr ')' { $$ = $2; }
            | T_id
              { p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
-               if (p->entryType != ENTRY_CONSTANT)
+               if (p->entryType != ENTRY_CONSTANT) {
                   error("identifier '%s' is not a constant", $1);
-               ($$).t = p->u.eConstant.type;
-                if ( equalType( ($$).t, typeInteger ) )
-                   ($$).v.integer = p->u.eConstant.value.vInteger;
-                else if ( equalType( ($$).t, typeReal ) )
-                   ($$).v.real = p->u.eConstant.value.vReal;
-                else if ( equalType( ($$).t, typeBoolean ) )
-                   ($$).v.boolean = p->u.eConstant.value.vBoolean;
-                else if ( equalType( ($$).t, typeChar ) )
-                   ($$).v.chr = p->u.eConstant.value.vChar;
-                else if ( equalType( ($$).t, typeIArray(typeChar) ) )
-                   ($$).v.str = p->u.eConstant.value.vString;
+                  ($$).type = typeVoid;
+               } else
+                  ($$) = p->u.eConstant;
              }
                
-           /* TODO: support unary operators for Real and Chars and 'not' for Booleans */
-           | '+' const_expr %prec UNOP
-             {
-               if ( !equalType( ($2).t, typeInteger ) && !equalType( ($2).t, typeReal) )
-                  error("Unary operator '+' used with operand of"
-                        " incompatible type");
-               $$ = $2;
-             }
-           | '-' const_expr %prec UNOP
-             {
-               if ( !equalType( ($2).t, typeInteger ) && !equalType( ($2).t, typeReal) )
-                  error("Unary operator '-' used with operand of"
-                        " incompatible type");
-               ($$).t = ($2).t;
-               ($$).v.integer = - ($2).v.integer;
-             }
+           | '+' const_expr %prec UNOP  { $$ = applyUnop('+', $2); }
+           | '-' const_expr %prec UNOP  { $$ = applyUnop('-', $2); }
+           | '!' const_expr %prec UNOP  { $$ = applyUnop('!', $2); }
            | const_expr '+' const_expr  { $$ = applyOperation('+', $1, $3); }
            | const_expr '-' const_expr  { $$ = applyOperation('-', $1, $3); }
            | const_expr '*' const_expr  { $$ = applyOperation('*', $1, $3); }
@@ -446,7 +403,7 @@ opt_clause : "break" ';' | "NEXT" ';' ;
 
 write : "WRITE" | "WRITELN" | "WRITESP" | "WRITESPLN" ;
 
-/* : type check these */
+/* TODO : type check these */
 format : expr | "FORM" '(' expr ',' expr opt_format_expr ')' ;
 opt_format_expr : /* Empty */ | ',' expr ;
 

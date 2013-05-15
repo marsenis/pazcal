@@ -1,8 +1,10 @@
-const int x = 6*7;
-const int y = -2*x+1;
-const bool z = y > x;
-//const char str[] = "Geia sou";
+const int x = 6*7;              // x = 42
+const int y = -2*x+1;           // y = -83
+const bool z = y > x;           // z = false
+const bool f = (x >= y) and (true || false);   // f = true
+const REAL i = x + 3.14159;     // y = 45.14159
+const char roundedI = i - 35;        // roundedY = '\n'
 
-int A[y];
+int A[roundedI];
 
 PROGRAM hello() { }
