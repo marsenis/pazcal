@@ -20,4 +20,14 @@ PROGRAM test() {
          break;
       }
    }
+
+   switch (x) {
+      case 1:
+         WRITE("case 1");
+         break;
+         break;
+      default:
+         WRITE("default");
+         NEXT;
+   }
 }

@@ -23,7 +23,10 @@ void addConstant(char *, Type, Const);
 Type arrayTypeCheck(Const, Type);
 Type exprTypeCheck(char, Type, Type);
 Type unopTypeCheck(char, Type);
-char aritheticType(Type);
+bool arithmeticType(Type);
+bool compatibleTypes(Type t1, Type t2);
+bool assignmentCompatibleTypes(Type t1, Type t2);
+
 
 Stack paramCheck(Stack, Stack, Type);
 

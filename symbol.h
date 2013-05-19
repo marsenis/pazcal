@@ -255,6 +255,4 @@ void          printMode          (PassMode mode);
 void          printSymbolTable   ();
 void          printMismatch      ();
 
-bool        compatibleTypes(Type t1, Type t2);
-
 #endif

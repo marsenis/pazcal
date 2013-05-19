@@ -32,8 +32,7 @@ Stack paramCheck(Stack Func, Stack Param, Type expr) {
 
    if (t == NULL)
       error("Function \"%s\" needs less arguments", f->id);
-   else if ( !compatibleTypes(t->u.eParameter.type, expr)) {
-   //else if ( !( (equalType(expr, typeInteger) || equalType(expr, typeChar) || equalType(expr, typeReal) ) && (equalType(t->u.eParameter.type, typeInteger) || equalType(t->u.eParameter.type, typeChar) || equalType(t->u.eParameter.type, typeReal) ) ) && !equalType(t->u.eParameter.type, expr) ) {
+   else if ( !assignmentCompatibleTypes(t->u.eParameter.type, expr)) {
       error("Type missmatch on the parameters given to the function \"%s\"", f->id);
 #ifdef DEBUG_SYMBOL
       printf("Type missmatch ");
@@ -46,10 +45,6 @@ Stack paramCheck(Stack Func, Stack Param, Type expr) {
    
    Param = pop(Param);
    return push(Param, t->u.eParameter.next);
-}
-
-char aritheticType(Type t) {
-   return equalType(t, typeInteger) || equalType(t, typeReal) || equalType(t, typeChar);
 }
 
 RepTypes applyInteger(char op, RepInteger x, RepInteger y) {
@@ -182,23 +177,61 @@ Type compatibleOperants(char op, Type t1) {
       case '%':
          if (!equalType(t1, typeInteger) && !equalType(t1, typeChar))
             error("incompatible types of operants in operation '%s'", show(op));
-         return t1;
+         return typeInteger; // Page 10, line 16
+         //return t1;
       case '<': case '>': case ',': case '.': case '=': case '!':
-         if (!equalType(t1, typeInteger) && !equalType(t1, typeChar) && !equalType(t1, typeReal))
+         if (!arithmeticType(t1))
             error("incompatible types of operants in operation '%s'", show(op));
          return typeBoolean;
+      // +, -, *, /
       default:
-         if (!equalType(t1, typeInteger) && !equalType(t1, typeChar) && !equalType(t1, typeReal))
+         if (!arithmeticType(t1))
             error("incompatible types of operants in operation '%s'", show(op));
-         return t1;
+         // Page 10, line 14
+         if (equalType(t1, typeReal)) return typeReal;
+         else return typeInteger;
+         //return t1;
    }
    return typeVoid;
 }
 
+/* 'int', 'REAL' and 'char' are compatible with each other
+ * because each one of them can be casted to any other
+ * inside an expression.
+ * ATTENTION: not to be confused with compatible types for assignment
+ * defined on page 11, line 15 for which the function assignmentCompatibleTypes
+ * is the appropriate one
+ */
+bool compatibleTypes(Type t1, Type t2) {
+   return
+   (
+      (    equalType(t1, typeInteger)
+        || equalType(t1, typeChar)
+        || equalType(t1, typeReal) )
+      &&
+      (    equalType(t2, typeInteger)
+        || equalType(t2, typeChar)
+        || equalType(t2, typeReal) )
+   ) || equalType(t1, t2);
+}
+
+// t1 := t2; Page 11, line 15
+bool assignmentCompatibleTypes(Type t1, Type t2) {
+   return equalType(t1, t2)
+       || ( equalType(t2, typeInteger) && equalType(t1, typeReal) )
+       || ( equalType(t2, typeChar) && equalType(t1, typeInteger) )
+       || ( equalType(t2, typeInteger) && equalType(t1, typeChar) );
+}
+
+bool arithmeticType(Type t) {
+   return equalType(t, typeInteger) || equalType(t, typeChar) || equalType(t, typeReal);
+}
+
 Const applyUnop(char op, Const c1) {
+   // Page 10, lines 6-9
    switch (op) {
       case '+':
-         if (!equalType(c1.type, typeInteger) && !equalType(c1.type, typeChar) && !equalType(c1.type, typeReal))
+         if (!arithmeticType(c1.type))
             error("incompatible type in unary operator '+'");
          return c1;
       case '-':
@@ -284,7 +317,7 @@ Const applyOperation(char op, Const c1, Const c2) {
 void addConstant(char *name, Type t, Const c) {
    Const cp;
 
-   if (!compatibleTypes(t, c.type))
+   if (!assignmentCompatibleTypes(t, c.type))
       error("incompatible types in assignment");
    else
       cp = promote(c, t);
@@ -311,31 +344,22 @@ Type unopTypeCheck(char op, Type t) {
    return t;
 }  
 
-int numOp(char op) { return op == '+' || op == '-' || op == '*' || op == '/' || op == '%'; }
 Type exprTypeCheck(char op, Type t1, Type t2) {
-   switch (op) {
-      case '&': case '|':
-         if ( !equalType(t1, typeBoolean) || !equalType(t2, typeBoolean) )
-            error("incompatible types in operation '%c%c'", op, op); // hackia
-         return typeBoolean;
-         break;
-      case '%':
-         // TODO: use arithmeticType
-         if ( equalType(t1, typeReal) || equalType(t2, typeReal) )
-            error("operator '\%' used with real operands");
-      default:
-         // TODO: consider arrays
-         if ( equalType(t1, typeReal) || equalType(t2, typeReal) )
-            return numOp(op) ? typeReal : typeBoolean;
-         else if ( equalType(t1, typeInteger) || equalType(t2, typeInteger) )
-            return numOp(op) ? typeInteger : typeBoolean;
-         else if ( equalType(t1, typeChar) || equalType(t2, typeChar) )
-            return numOp(op) ? typeChar : typeBoolean;
-         else
-            error("incompatible types in operation '%c'", op); // TODO: better error message: fix op
-         break;
+   Type result;
+
+   if (!compatibleTypes(t1, t2)) {
+      error("incompatible types of operants in operation '%s'", show(op));
+      return typeVoid;
+   } else if (!equalType(t1, t2))
+      t1 = t2 = generalType(t1, t2);
+
+   result = compatibleOperants(op, t1);
+   if ( equalType(result, typeVoid) ) {
+      error("incompatible types of operants in operation '%s'", show(op));
+      return typeVoid;
    }
-   return typeInteger; // Default action. TODO: change it
+
+   return result;
 }
 
 Type arrayTypeCheck(Const c, Type arrayType) {

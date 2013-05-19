@@ -652,21 +652,6 @@ bool equalType (Type type1, Type type2)
     return true;        
 }
 
-/* 'int', 'REAL' and 'char' are compatible with each other
- * because each one of them can be casted to any other */
-bool compatibleTypes(Type t1, Type t2) {
-   return
-   (
-      (    equalType(t1, typeInteger)
-        || equalType(t1, typeChar)
-        || equalType(t1, typeReal) )
-      &&
-      (    equalType(t2, typeInteger)
-        || equalType(t2, typeChar)
-        || equalType(t2, typeReal) )
-   ) || equalType(t1, t2);
-}
-
 void printType (Type type)
 {
     if (type == NULL) {
