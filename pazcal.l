@@ -5,6 +5,7 @@
 #include "error.h"
 #include "general.h"
 #include "symbol.h"
+#include "intermediateCode.h"
 #include "pazcal.tab.h"
 
 #define T_eof          0

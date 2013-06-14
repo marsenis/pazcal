@@ -7,6 +7,7 @@
 #include "symbol.h"
 #include "pazcal.lex.h"
 #include "semantics.h"
+#include "intermediateCode.h"
 
 #define SYMB_TABLE_SIZE 10007
 
@@ -24,6 +25,19 @@ unsigned long long cannotBreak = 0; // Used as bitwise stack of boolean values
 #define PUSH_SWITCH cannotBreak = (cannotBreak << 1) | 1
 #define POP_SWITCH  cannotBreak >>= 1
 
+bool insideRoutine = false; // Used for generating intermediate code
+                            // for the begining/ending of a routine
+#define EMT ((opts) { EMPTY, 0 })  // Empty Quad
+
+// TODO: Currently the following code is in intermediateCode.h
+//       Consider moving it to a more appropriate place
+/*
+typedef struct {
+   SymbolEntry   *Place;
+   Type          t;
+   labelListType *Next, *True, *False;
+} nonterm ;
+*/
 %}
 
 %union {
@@ -32,7 +46,7 @@ unsigned long long cannotBreak = 0; // Used as bitwise stack of boolean values
    RepReal    real;
    RepString  str;
 
-   Type       t;
+   nonterm    rlvalue;
 
    Const      cnst;
 }
@@ -70,7 +84,7 @@ unsigned long long cannotBreak = 0; // Used as bitwise stack of boolean values
 %token T_WRITESP      "WRITESP"
 %token T_WRITESPLN    "WRITESPLN"
 
-%token<str> T_id
+%token<str>           T_id
 %token T_eq           "=="
 %token T_neq          "!="
 %token T_geq          ">="
@@ -87,17 +101,17 @@ unsigned long long cannotBreak = 0; // Used as bitwise stack of boolean values
 %token<chr>     T_char_const
 %token<str>     T_string_literal
 
-%type<t>       type
-%type<t>       proc_func
-%type<cnst>    const_expr
-%type<cnst>    opt_const_expr
-%type<t>       expr
-%type<t>       l_value;
-%type<integer> assign
-%type<integer> more_l_value;
-%type<t>       call
-%type<t>       opt_expr
-%type<t>       opt_format_expr 
+%type<t>             type
+%type<t>             proc_func
+%type<cnst>          const_expr
+%type<cnst>          opt_const_expr
+%type<rlvalue>       expr
+%type<rlvalue>       l_value;
+%type<integer>       assign
+%type<integer>       more_l_value;
+%type<rlvalue>       call
+%type<rlvalue>       opt_expr
+%type<rlvalue>       opt_format_expr 
 
 /* Fixes dangling else shift/reduce */
 %nonassoc ')'
@@ -128,6 +142,12 @@ unsigned long long cannotBreak = 0; // Used as bitwise stack of boolean values
 
 
          ** ALL DONE :) **
+
+   TODO: For Intermediate code generation
+         * For starters fix all grammar attributes that expect a Type and get an rlvalue instead.
+           In it's present form (14-6-13) it doesn't even compile
+         * Generate code (obviously) for everything
+
 */
 %%
 
@@ -156,7 +176,7 @@ array_var_init : /* Empty */
                { arrayType = arrayTypeCheck( $2, arrayType ); } array_var_init ;
 
 routine_header : proc_func T_id
-                 { func = newFunction($2); openScope(); } '(' opt_args ')'
+                 { func = newFunction($2); openScope(); insideRoutine = true; } '(' opt_args ')'
                  { endFunctionHeader(func, $1);
 #ifdef DEBUG_SYMBOL
                  printf("Begining function body:\n"); printSymbolTable();
@@ -180,9 +200,18 @@ array_formal : /* Empty */
                { arrayType = arrayTypeCheck( $2, arrayType); } array_formal ;
 
 routine : routine_header ';' { forwardFunction(func); closeScope(); }
-        | routine_header block { closeScope(); } ;
+        | routine_header block
+          {
+            closeScope();
+            genQuad(ENDU, (opts) {VAR, (contentType) { .variable = func } }, EMT, EMT);
+          } ;
 
-program_header : "PROGRAM" T_id '(' ')' ;
+program_header : "PROGRAM" T_id '(' ')'
+               {
+                  func =  newFunction($2);
+                  endFunctionHeader(func, typeVoid);
+                  genQuad(UNIT, (opts) {VAR, (contentType) { .variable = func } }, EMT, EMT);
+               };
 
 program : program_header
          {
@@ -191,7 +220,10 @@ program : program_header
             printSymbolTable();
 #endif
          }
-            block ;
+            block
+         {
+            genQuad(ENDU, (opts) {VAR, (contentType) { .variable = func } }, EMT, EMT);
+         };
 
 type : "int"  { $$ = typeInteger; }
      | "bool" { $$ = typeBoolean; }
@@ -232,31 +264,31 @@ const_expr : T_int_const        { ($$).type = typeInteger; ($$).value.vInteger =
            | const_expr "or" const_expr { $$ = applyOperation('|', $1, $3); }
            ;
 
-expr : T_int_const         { $$ = typeInteger; }
-     | T_float_const       { $$ = typeReal; }
-     | T_char_const        { $$ = typeChar; }
-     | T_string_literal    { $$ = typeArray(strlen($1), typeChar); }
-     | "true"              { $$ = typeBoolean; }
-     | "false"             { $$ = typeBoolean; }
-     | '(' expr ')'        { $$ = $2; }
-     | l_value             { $$ = $1; }
-     | call                { $$ = $1; }
-     | '+' expr %prec UNOP { $$ = unopTypeCheck('+', $2); }
-     | '-' expr %prec UNOP { $$ = unopTypeCheck('-', $2); }
-     | '!' expr %prec UNOP { $$ = unopTypeCheck('!', $2); }
-     | expr '+' expr       { $$ = exprTypeCheck('+', $1, $3); }
-     | expr '-' expr       { $$ = exprTypeCheck('-', $1, $3); }
-     | expr '*' expr       { $$ = exprTypeCheck('*', $1, $3); }
-     | expr '/' expr       { $$ = exprTypeCheck('/', $1, $3); }
-     | expr '%' expr       { $$ = exprTypeCheck('%', $1, $3); }
-     | expr "==" expr      { $$ = exprTypeCheck('=', $1, $3); }
-     | expr "!=" expr      { $$ = exprTypeCheck('!', $1, $3); }
-     | expr '<' expr       { $$ = exprTypeCheck('<', $1, $3); }
-     | expr '>' expr       { $$ = exprTypeCheck('>', $1, $3); }
-     | expr "<=" expr      { $$ = exprTypeCheck(',', $1, $3); }
-     | expr ">=" expr      { $$ = exprTypeCheck('.', $1, $3); }
-     | expr "and" expr     { $$ = exprTypeCheck('&', $1, $3); }
-     | expr "or" expr      { $$ = exprTypeCheck('|', $1, $3); } ;
+expr : T_int_const         { ($$).t = typeInteger; ($$).Place = newConstant(newConstName(), typeInteger, $1); }
+     | T_float_const       { ($$).t = typeReal;    ($$).Place = newConstant(newConstName(), typeReal,    $1); }
+     | T_char_const        { ($$).t = typeChar;    ($$).Place = newConstant(newConstName(), typeChar,    $1); }
+     | T_string_literal    { ($$).t = typeArray(strlen($1), typeChar); ($$).Place = newConstant(newConstName(), typeIArray(typeChar), $1);}
+     | "true"              { ($$).t = typeBoolean; ($$).Place = newConstant(newConstName(), typeBoolean,  true);}
+     | "false"             { ($$).t = typeBoolean; ($$).Place = newConstant(newConstName(), typeBoolean, false);}
+     | '(' expr ')'        { $$ = $2; } /* { ($$).t = ($2; ($$).Place = ($2).Place; } */
+     | l_value             { ($$).t = $1; }
+     | call                { ($$).t = $1; }
+     | '+' expr %prec UNOP { ($$).t = unopTypeCheck('+', $2); }
+     | '-' expr %prec UNOP { ($$).t = unopTypeCheck('-', $2); }
+     | '!' expr %prec UNOP { ($$).t = unopTypeCheck('!', $2); }
+     | expr '+' expr       { ($$).t = exprTypeCheck('+', $1, $3); }
+     | expr '-' expr       { ($$).t = exprTypeCheck('-', $1, $3); }
+     | expr '*' expr       { ($$).t = exprTypeCheck('*', $1, $3); }
+     | expr '/' expr       { ($$).t = exprTypeCheck('/', $1, $3); }
+     | expr '%' expr       { ($$).t = exprTypeCheck('%', $1, $3); }
+     | expr "==" expr      { ($$).t = exprTypeCheck('=', $1, $3); }
+     | expr "!=" expr      { ($$).t = exprTypeCheck('!', $1, $3); }
+     | expr '<' expr       { ($$).t = exprTypeCheck('<', $1, $3); }
+     | expr '>' expr       { ($$).t = exprTypeCheck('>', $1, $3); }
+     | expr "<=" expr      { ($$).t = exprTypeCheck(',', $1, $3); }
+     | expr ">=" expr      { ($$).t = exprTypeCheck('.', $1, $3); }
+     | expr "and" expr     { ($$).t = exprTypeCheck('&', $1, $3); }
+     | expr "or" expr      { ($$).t = exprTypeCheck('|', $1, $3); } ;
 
 l_value : T_id
           more_l_value 
@@ -315,7 +347,12 @@ opt_call      : /* Empty */
 more_opt_call : /* Empty */
               | ',' expr { Param = paramCheck(Func, Param, $2); } more_opt_call ;
 
-block : '{' { openScope(); } opt_block '}' { closeScope(); } ;
+block : '{'
+         { openScope();
+           if (insideRoutine)
+              genQuad(UNIT, (opts) {VAR, (contentType) { .variable = func } }, EMT, EMT);
+            insideRoutine = false;
+         } opt_block '}' { closeScope(); } ;
 opt_block : /* Empty */ | local_def opt_block | stmt opt_block ;
 
 local_def : const_def | var_def ;
@@ -469,6 +506,8 @@ int main(int argc, char *argv[]) {
    openScope(); // Global scope
 
    if (yyparse()) exit(1);
+
+   printImm();
 
    closeScope();
    closeScope();

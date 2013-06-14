@@ -101,7 +101,8 @@ typedef enum {
 
 typedef enum {            
    PASS_BY_VALUE,                        /* Κατ' αξία                  */
-   PASS_BY_REFERENCE                     /* Κατ' αναφορά               */
+   PASS_BY_REFERENCE,                    /* Κατ' αναφορά               */
+   PASS_RET                              /* added by marsenis for intermediate code */
 } PassMode;
 
 // Added by marsenis.
@@ -251,6 +252,8 @@ bool          equalType          (Type type1, Type type2);
 void          printType          (Type type);
 void          printMode          (PassMode mode);
 
+// Added by marsenis
+char* newConstName();
 /* Added for debugging. It's defined in symbolDebug.c */
 void          printSymbolTable   ();
 void          printMismatch      ();
