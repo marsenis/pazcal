@@ -137,7 +137,7 @@ void printImm() {
             printf("%d: endu %s,-,-\n", i, fix(immCode[i].x));
             break;
          case ARRAY:
-            printf("%d: %s := %s[%s]\n", i, immCode[i].z.content.variable->id, fix(immCode[i].x), fix(immCode[i].y) );
+            printf("%d: array %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), immCode[i].z.content.variable->id);
             break;
          case '=': case '>': case '<':
             printf("%d: %c, %s, %s, %s\n", i, immCode[i].op, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );

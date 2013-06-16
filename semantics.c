@@ -375,6 +375,40 @@ Type arrayTypeCheck(Const c, Type arrayType) {
    return typeVoid;
 }
 
+// TODO: use only variable inside contentType instead of variable/constant for easy access
+opts makeOperantFromPlace(SymbolEntry *place) {
+   opts p;
+   switch (place->entryType) {
+      case ENTRY_VARIABLE: case ENTRY_TEMPORARY: case ENTRY_PARAMETER:
+         p = (opts) {VAR, (contentType) { .variable = place } };
+         break;
+      case ENTRY_CONSTANT:
+         p = (opts) {CONST, (contentType) { .constant = place } };
+         break;
+   }
+   return p;
+}
+
+nonterm exprCodeGen(char op, nonterm t1, nonterm t2) {
+   nonterm result;
+   SymbolEntry *tmp;
+
+   result.t = exprTypeCheck(op, t1.t, t2.t);
+
+   opts op1 = makeOperantFromPlace(t1.Place);
+   opts op2 = makeOperantFromPlace(t2.Place);
+
+   switch (op) {
+      case '+': case '-': case '*': case '/': case '%':
+         tmp = newTemporary(result.t);
+         genQuad(op, op1, op2, (opts) {VAR, (contentType) { .variable = tmp } } );
+         result.Place = tmp;
+         break;
+   }
+
+   return result;
+}
+
 void addLibraryFunctions() {
    SymbolEntry *p;
 

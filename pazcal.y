@@ -47,6 +47,7 @@ typedef struct {
    RepString  str;
 
    nonterm    rlvalue;
+   Type       t;
 
    Const      cnst;
 }
@@ -109,9 +110,9 @@ typedef struct {
 %type<rlvalue>       l_value;
 %type<integer>       assign
 %type<integer>       more_l_value;
-%type<rlvalue>       call
-%type<rlvalue>       opt_expr
-%type<rlvalue>       opt_format_expr 
+%type<t>             call
+%type<t>             opt_expr
+%type<t>             opt_format_expr 
 
 /* Fixes dangling else shift/reduce */
 %nonassoc ')'
@@ -267,28 +268,28 @@ const_expr : T_int_const        { ($$).type = typeInteger; ($$).value.vInteger =
 expr : T_int_const         { ($$).t = typeInteger; ($$).Place = newConstant(newConstName(), typeInteger, $1); }
      | T_float_const       { ($$).t = typeReal;    ($$).Place = newConstant(newConstName(), typeReal,    $1); }
      | T_char_const        { ($$).t = typeChar;    ($$).Place = newConstant(newConstName(), typeChar,    $1); }
-     | T_string_literal    { ($$).t = typeArray(strlen($1), typeChar); ($$).Place = newConstant(newConstName(), typeIArray(typeChar), $1);}
+     | T_string_literal    { ($$).t = typeArray(strlen($1), typeChar); ($$).Place = newConstant(newConstName(), typeArray(strlen($1), typeChar), $1);}
      | "true"              { ($$).t = typeBoolean; ($$).Place = newConstant(newConstName(), typeBoolean,  true);}
      | "false"             { ($$).t = typeBoolean; ($$).Place = newConstant(newConstName(), typeBoolean, false);}
      | '(' expr ')'        { $$ = $2; } /* { ($$).t = ($2; ($$).Place = ($2).Place; } */
-     | l_value             { ($$).t = $1; }
+     | l_value             { $$ = $1; }
      | call                { ($$).t = $1; }
-     | '+' expr %prec UNOP { ($$).t = unopTypeCheck('+', $2); }
-     | '-' expr %prec UNOP { ($$).t = unopTypeCheck('-', $2); }
-     | '!' expr %prec UNOP { ($$).t = unopTypeCheck('!', $2); }
-     | expr '+' expr       { ($$).t = exprTypeCheck('+', $1, $3); }
-     | expr '-' expr       { ($$).t = exprTypeCheck('-', $1, $3); }
-     | expr '*' expr       { ($$).t = exprTypeCheck('*', $1, $3); }
-     | expr '/' expr       { ($$).t = exprTypeCheck('/', $1, $3); }
-     | expr '%' expr       { ($$).t = exprTypeCheck('%', $1, $3); }
-     | expr "==" expr      { ($$).t = exprTypeCheck('=', $1, $3); }
-     | expr "!=" expr      { ($$).t = exprTypeCheck('!', $1, $3); }
-     | expr '<' expr       { ($$).t = exprTypeCheck('<', $1, $3); }
-     | expr '>' expr       { ($$).t = exprTypeCheck('>', $1, $3); }
-     | expr "<=" expr      { ($$).t = exprTypeCheck(',', $1, $3); }
-     | expr ">=" expr      { ($$).t = exprTypeCheck('.', $1, $3); }
-     | expr "and" expr     { ($$).t = exprTypeCheck('&', $1, $3); }
-     | expr "or" expr      { ($$).t = exprTypeCheck('|', $1, $3); } ;
+     | '+' expr %prec UNOP { ($$).t = unopTypeCheck('+', ($2).t); }
+     | '-' expr %prec UNOP { ($$).t = unopTypeCheck('-', ($2).t); }
+     | '!' expr %prec UNOP { ($$).t = unopTypeCheck('!', ($2).t); }
+     | expr '+' expr       { $$ = exprCodeGen('+', $1, $3); }
+     | expr '-' expr       { $$ = exprCodeGen('-', $1, $3); }
+     | expr '*' expr       { $$ = exprCodeGen('*', $1, $3); }
+     | expr '/' expr       { $$ = exprCodeGen('/', $1, $3); }
+     | expr '%' expr       { $$ = exprCodeGen('%', $1, $3); }
+     | expr "==" expr      { $$ = exprCodeGen('=', $1, $3); }
+     | expr "!=" expr      { $$ = exprCodeGen('!', $1, $3); }
+     | expr '<' expr       { $$ = exprCodeGen('<', $1, $3); }
+     | expr '>' expr       { $$ = exprCodeGen('>', $1, $3); }
+     | expr "<=" expr      { $$ = exprCodeGen(',', $1, $3); }
+     | expr ">=" expr      { $$ = exprCodeGen('.', $1, $3); }
+     | expr "and" expr     { $$ = exprCodeGen('&', $1, $3); }
+     | expr "or" expr      { $$ = exprCodeGen('|', $1, $3); } ;
 
 l_value : T_id
           more_l_value 
@@ -304,6 +305,8 @@ l_value : T_id
                else
                   error("identifier \"%s\" is not a variable/constant", $1);
 
+               Type wholeType = t;
+
                int i;
                for (i = 0; i < $2; i++) {
                   if (t->kind != TYPE_ARRAY && t->kind != TYPE_IARRAY) {
@@ -312,12 +315,26 @@ l_value : T_id
                   }
                   t = t->refType;
                }
-               $$ = t;
+               ($$).t = t;
+               
+               t = wholeType;
+               if ($2 != 0) {
+                  SymbolEntry *tp = newConstant(newConstName(), typeInteger, (RepInteger) 42); // TODO: get list with array subscripts
+                  SymbolEntry *tmp1 = newTemporary(typePointer(t->refType));
+                  SymbolEntry *tmp2 = newTemporary(t->refType);
+
+                  genQuad(ARRAY, (opts) { VAR, (contentType) { .variable = p } }, (opts) { CONST, (contentType) { .constant = tp } }, (opts) { VAR, (contentType) { .variable = tmp1 } } );
+                  genQuad(ASG, (opts) {VAR, (contentType) { .variable = tmp1 }}, EMT, (opts) {VAR, (contentType) { .variable = tmp2 }});
+                  ($$).Place = tmp2;
+               }
+               else
+                  ($$).Place = p;
+
             };
 more_l_value : /* Empty */ { $$ = 0; } // 0-dimensions (not an array)
              | '[' expr ']' more_l_value
                 // Page 9, Line 18
-                { if (!equalType($2, typeInteger))
+                { if (!equalType(($2).t, typeInteger))
                      error("array subscript is not an int");
                   $$ = ($4) + 1;      // one more dimension
                 }
@@ -343,9 +360,9 @@ call : T_id '('
          };
 
 opt_call      : /* Empty */
-              | expr { Param = paramCheck(Func, Param, $1); } more_opt_call ;
+              | expr { Param = paramCheck(Func, Param, ($1).t); } more_opt_call ;
 more_opt_call : /* Empty */
-              | ',' expr { Param = paramCheck(Func, Param, $2); } more_opt_call ;
+              | ',' expr { Param = paramCheck(Func, Param, ($2).t); } more_opt_call ;
 
 block : '{'
          { openScope();
@@ -360,19 +377,19 @@ local_def : const_def | var_def ;
 stmt : ';'
       | l_value assign expr ';'
          {
-            if (!assignmentCompatibleTypes($1, $3)) { error("type mismatch on assignment"); printMismatch($1, $3); }
-            if ($2 != 1 && !arithmeticType($1)) error("this assignment operator only works on arithmetic types");
+            if (!assignmentCompatibleTypes(($1).t, ($3).t)) { error("type mismatch on assignment"); printMismatch(($1).t, ($3).t); }
+            if ($2 != 1 && !arithmeticType(($1).t)) error("this assignment operator only works on arithmetic types");
          }
       | l_value pm ';'
-         { if (!arithmeticType($1)) error("increment/decrement operators only work on arithmetic types"); }
+         { if (!arithmeticType(($1).t)) error("increment/decrement operators only work on arithmetic types"); }
       | call ';' { if (!equalType($1, typeVoid)) warning("ignoring function result"); }
-      | "if" '(' expr ')'  stmt { if (!equalType($3, typeBoolean)) error("condition of the 'if' statement is not a boolean"); }
+      | "if" '(' expr ')'  stmt { if (!equalType(($3).t, typeBoolean)) error("condition of the 'if' statement is not a boolean"); }
       | "if" '(' expr ')' stmt "else" stmt
-         { if (!equalType($3, typeBoolean)) error("condition of the 'if-else' statement is not a boolean"); }
+         { if (!equalType(($3).t, typeBoolean)) error("condition of the 'if-else' statement is not a boolean"); }
       | "while" '(' expr ')'
          {
             PUSH_LOOP;
-            if (!equalType($3, typeBoolean))
+            if (!equalType(($3).t, typeBoolean))
                error("condition of the 'while' statement is not a boolean");
          }
          stmt { POP_LOOP; }
@@ -388,14 +405,14 @@ stmt : ';'
          range ')' { PUSH_LOOP; } stmt { POP_LOOP; }
       | "do" { PUSH_LOOP; } stmt "while" '(' expr ')' ';'
          {
-            if (!equalType($6, typeBoolean))
+            if (!equalType(($6).t, typeBoolean))
                error("condition of the 'do-while' statement is not a boolean");
             POP_LOOP;
          }
       | "switch" '(' expr ')'
          {
             PUSH_SWITCH;
-            if (!equalType($3, typeInteger))
+            if (!equalType(($3).t, typeInteger))
                error("switch expression is not an integer");
          }
          '{' opt_case_clause opt_default_clause '}' { POP_SWITCH; cannotBreak >>= 1; }
@@ -420,7 +437,7 @@ more_case         : /* Empty */
                      }
                   ':' more_case ;
 opt_default_clause: /* Empty */ | "default" ':' clause ;
-opt_expr          : /* Empty */ { $$ = typeVoid; } | expr { $$ = $1; };
+opt_expr          : /* Empty */ { $$ = typeVoid; } | expr { $$ = ($1).t; };
 opt_format        : /* Empty */ | format more_format ;
 more_format       : /* Empty */ | ',' format more_format ;
 
@@ -433,19 +450,19 @@ assign : '='  { $$ = 1; }
 
 range : expr
       {
-         if (!equalType($1, typeInteger) )
+         if (!equalType(($1).t, typeInteger) )
             error("range expression in FOR statement is not an integer");
       }
       to_downto expr
       {
-         if (!equalType($4, typeInteger) )
+         if (!equalType(($4).t, typeInteger) )
             error("range expression in FOR statement is not an integer");
       }
       opt_step ;
 to_downto : "TO" | "DOWNTO" ;
 opt_step : /* Empty */ | "STEP" expr 
          {
-            if (!equalType($2, typeInteger) )
+            if (!equalType(($2).t, typeInteger) )
                error("step expression in FOR statement is not an integer");
          };
 
@@ -457,28 +474,28 @@ write : "WRITE" | "WRITELN" | "WRITESP" | "WRITESPLN" ;
 
 format : expr
          {
-            if (!arithmeticType($1) && !equalType($1, typeBoolean) && !equalType(typeIArray(typeChar), $1))
+            if (!arithmeticType(($1).t) && !equalType(($1).t, typeBoolean) && !equalType(typeIArray(typeChar), ($1).t))
                error("non basic type (or string) given to a write command");
          }
        | "FORM" '(' expr
          {
-            if (!arithmeticType($3) && !equalType($3, typeBoolean) && !equalType($3, typeIArray(typeChar)))
+            if (!arithmeticType(($3).t) && !equalType(($3).t, typeBoolean) && !equalType(($3).t, typeIArray(typeChar)))
                error("non basic type (or string) given to a write command");
          }
        ',' expr
          {
-            if (!equalType($6, typeInteger))
+            if (!equalType(($6).t, typeInteger))
                error("format's second parameter (field length) is not a integer");
          }
        opt_format_expr
          {
             if (!equalType($8, typeInteger))
                error("format's third parameter (decimal digits) is not an integer");
-            if (!equalType($3, typeReal))
+            if (!equalType(($3).t, typeReal))
                error("expression of type REAL was expected since FORM has three parameters");
          }
        ')' ;
-opt_format_expr : /* Empty */ { $$ = typeVoid; } | ',' expr { $$ = $2; } ;
+opt_format_expr : /* Empty */ { $$ = typeVoid; } | ',' expr { $$ = ($2).t; } ;
 
 %%
 

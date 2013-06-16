@@ -19,7 +19,8 @@ PROC print(char msg[], int n, int x[])
    WRITE(msg);
    int i;
    FOR (i, 0 TO n-1) {
-      if (i > 0) WRITE(", ");
+      if (i > 0)
+         WRITE(", ");
       WRITE(x[i]);
    }
    WRITELN();

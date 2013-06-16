@@ -4,6 +4,7 @@
 #include "general.h"
 #include "error.h"
 #include "symbol.h"
+#include "intermediateCode.h"
 
 // Stacks used for inheritted atributes in SDT shemas.
 typedef struct StackTag* Stack;
@@ -27,6 +28,7 @@ bool arithmeticType(Type);
 bool compatibleTypes(Type t1, Type t2);
 bool assignmentCompatibleTypes(Type t1, Type t2);
 
+nonterm exprCodeGen(char, nonterm, nonterm);
 
 Stack paramCheck(Stack, Stack, Type);
 

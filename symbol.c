@@ -24,6 +24,7 @@
    --------------------------------------------------------------------- */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
 
@@ -190,12 +191,13 @@ void closeScope ()
         SymbolEntry * next = e->nextInScope;
         
         hashTable[e->hashValue] = e->nextHash;
-        destroyEntry(e);
+        //destroyEntry(e); // removed by marsenis. TODO:
+        //                    cosinder fixing the problem another way.
         e = next;
     }
     
     currentScope = currentScope->parent;
-    delete(t);
+    //delete(t); // removed by marsenis
 }
 
 static void insertEntry (SymbolEntry * e)
