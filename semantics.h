@@ -28,7 +28,10 @@ bool arithmeticType(Type);
 bool compatibleTypes(Type t1, Type t2);
 bool assignmentCompatibleTypes(Type t1, Type t2);
 
-nonterm exprCodeGen(char, nonterm, nonterm);
+rlvalue exprCodeGen(char, rlvalue, rlvalue);
+rlvalue unopCodeGen(char,  rlvalue);
+SymbolEntry *findLvaluePlace(lvalue);
+rlvalue genCodeBooleanExpr(rlvalue, SymbolEntry*);
 
 Stack paramCheck(Stack, Stack, Type);
 

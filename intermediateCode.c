@@ -5,7 +5,6 @@
 #include "symbol.h"
 #include "intermediateCode.h"
 
-/* TODO: Hash for labels in jump-to statements */
 immType immCode[MAX];
 int immCurrentPos = 0;
 
@@ -34,6 +33,9 @@ labelListType *mergeLists(labelListType *l1, labelListType *l2) {
    return l1;
 }
 
+// TODO: maybe destroy the list after backpatching.
+//       Consider using garbage collector because most
+//       of the label lists are not freed
 void backpatch(labelListType *l, int z) {
    labelListType *p;
    for (p = l; p != NULL; p = p->nxt)  {
@@ -57,55 +59,49 @@ const char *fix(opts id) {
    switch (id.type) {
       case CONST:
          tmp = calloc(64, sizeof(char));
-         switch (id.content.constant->u.eConstant.type->kind) {
-            case TYPE_INTEGER:
-               sprintf(tmp, "%d", id.content.constant->u.eConstant.value.vInteger);
-               break;
-            case TYPE_BOOLEAN:
-               sprintf(tmp, "%s", (id.content.constant->u.eConstant.value.vBoolean) ? "true" : "false" );
-               break;
-            case TYPE_CHAR:
-               sprintf(tmp, "%c", id.content.constant->u.eConstant.value.vChar);
-               break;
-            case TYPE_REAL:
-               sprintf(tmp, "%lf", id.content.constant->u.eConstant.value.vReal);
-               break;
-            case TYPE_ARRAY: case TYPE_IARRAY:
-               if (id.content.constant->u.eConstant.type->refType->kind == TYPE_CHAR)
-                  sprintf(tmp, "%s", id.content.constant->u.eConstant.value.vString);
-               else
-                  internal("found a constant with non-regular type");
-               break;
-            default:
-               internal("found a constant with non-regular type");
-               break;
-         }
+         sprintf(tmp, "%d", id.content.constant);
          return tmp;
          break;
       case VAR:
-         if (id.content.variable->entryType == ENTRY_TEMPORARY) {
-            tmp = calloc(64, sizeof(char));
-            if ( id.content.variable->u.eTemporary.type->kind == TYPE_POINTER )
-               sprintf(tmp, "[%s]", id.content.variable->id);
-            else
-               sprintf(tmp, "$%d", id.content.variable->u.eTemporary.number);
-            return tmp;
-         } else if (id.content.variable->entryType == ENTRY_CONSTANT) {
-            return id.content.variable->u.eConstant.value.vString;
-            /*
-            if ( equalType(id.content.variable->u.eConstant.type, typeIArray(typeChar) ) ) return id.content.variable->u.eConstant.value.vString;
-            else {
-               tmp = calloc(64, sizeof(char));
-               sprintf(tmp, "%d\n", id.content.variable->u.eConstant.value.vInteger);
+         tmp = calloc(64, sizeof(char));
+         switch (id.content.variable->entryType) {
+            case ENTRY_CONSTANT:
+               switch (id.content.variable->u.eConstant.type->kind) {
+                  case TYPE_INTEGER:
+                     sprintf(tmp, "%d", id.content.variable->u.eConstant.value.vInteger);
+                     break;
+                  case TYPE_BOOLEAN:
+                     sprintf(tmp, "%s", (id.content.variable->u.eConstant.value.vBoolean) ? "true" : "false" );
+                     break;
+                  case TYPE_CHAR:
+                     sprintf(tmp, "%c", id.content.variable->u.eConstant.value.vChar);
+                     break;
+                  case TYPE_REAL:
+                     sprintf(tmp, "%lf", id.content.variable->u.eConstant.value.vReal);
+                     break;
+                  case TYPE_ARRAY: case TYPE_IARRAY:
+                     if (id.content.variable->u.eConstant.type->refType->kind == TYPE_CHAR)
+                        sprintf(tmp, "%s", id.content.variable->u.eConstant.value.vString);
+                     else
+                        internal("found a constant with non-regular type");
+                     break;
+                  default:
+                     internal("found a constant with non-regular type");
+                     break;
+               }
                return tmp;
-            }
-            */
-         }
-         else {
-            /*tmp = calloc(64, sizeof(char));
-            sprintf(tmp, "%s(%d)", id.content.variable->id, id.content.variable->nestingLevel);
-            return tmp; */
-            return id.content.variable->id;
+               break;
+            case ENTRY_TEMPORARY:
+               tmp = calloc(64, sizeof(char));
+               if ( id.content.variable->u.eTemporary.type->kind == TYPE_POINTER )
+                  sprintf(tmp, "[%s]", id.content.variable->id);
+               else
+                  sprintf(tmp, "$%d", id.content.variable->u.eTemporary.number);
+               return tmp;
+               break;
+            default:
+               return id.content.variable->id;
+               break;
          }
          break;
       case LBL:
@@ -148,13 +144,13 @@ void printImm() {
          case ASG:
             printf("%d: %s := %s\n", i, fix(immCode[i].z), fix(immCode[i].x));
             break;
-         case NEQ:
+         case '!':
             printf("%d: <>, %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
             break;
-         case LEQ:
+         case ',':
             printf("%d: <=, %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
             break;
-         case GEQ:
+         case '.':
             printf("%d: >=, %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
             break;
          case IFB:

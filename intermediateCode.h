@@ -4,6 +4,11 @@
 #define __INTERCODE__
 
 #define MAX 10000
+
+#define EMT ((opts) { EMPTY, 0 })  // Empty Quad
+#define Var(X)  ( (opts) { VAR  , (contentType) { .variable = (X) } } )
+#define Cnst(X) ( (opts) { CONST, (contentType) { .constant = (X) } } )
+
 /* ------------------- Data structures ------------------- */
 // TODO: retv is depricated and should be replaced by assignment to $$
 enum opType { UNIT, ENDU, ARRAY, ASG, NEQ, LEQ, GEQ, IFB, JUMP, LABEL, JUMPL, CALL, PAR, RET, RETV };
@@ -11,8 +16,8 @@ enum opType { UNIT, ENDU, ARRAY, ASG, NEQ, LEQ, GEQ, IFB, JUMP, LABEL, JUMPL, CA
 enum optsType { CONST, VAR, LBL, PASS, EMPTY };
 
 typedef union {
-   SymbolEntry *constant;
    SymbolEntry *variable;
+   int          constant;
    int          label;
    PassMode     mode;
 } contentType;
@@ -48,6 +53,14 @@ typedef struct {
    SymbolEntry   *Place;
    Type          t;
    labelListType *Next, *True, *False;
-} nonterm ;
+} rlvalue ;
+
+// Dragon Book, page 384
+typedef struct {
+   SymbolEntry *addr;
+   SymbolEntry *array;
+   Type        type;
+} lvalue;
+   
 
 #endif

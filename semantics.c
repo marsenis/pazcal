@@ -2,6 +2,9 @@
 #include "general.h"
 #include "semantics.h"
 
+#define EMT ((opts) { EMPTY, 0 })  // Empty Quad
+//#define Var(X) ( (opts) { VAR, (contentType) { .variable = (X) } } )
+
 /* Stacks used for maintaining inheritted attributes
  * in the SDT schemas. Specificaly, the stacks can hold
  * SymbolEntry pointers.
@@ -375,36 +378,64 @@ Type arrayTypeCheck(Const c, Type arrayType) {
    return typeVoid;
 }
 
-// TODO: use only variable inside contentType instead of variable/constant for easy access
-opts makeOperantFromPlace(SymbolEntry *place) {
-   opts p;
-   switch (place->entryType) {
-      case ENTRY_VARIABLE: case ENTRY_TEMPORARY: case ENTRY_PARAMETER:
-         p = (opts) {VAR, (contentType) { .variable = place } };
-         break;
-      case ENTRY_CONSTANT:
-         p = (opts) {CONST, (contentType) { .constant = place } };
-         break;
-   }
-   return p;
-}
-
-nonterm exprCodeGen(char op, nonterm t1, nonterm t2) {
-   nonterm result;
-   SymbolEntry *tmp;
+rlvalue exprCodeGen(char op, rlvalue t1, rlvalue t2) {
+   rlvalue result;
 
    result.t = exprTypeCheck(op, t1.t, t2.t);
 
-   opts op1 = makeOperantFromPlace(t1.Place);
-   opts op2 = makeOperantFromPlace(t2.Place);
-
    switch (op) {
       case '+': case '-': case '*': case '/': case '%':
-         tmp = newTemporary(result.t);
-         genQuad(op, op1, op2, (opts) {VAR, (contentType) { .variable = tmp } } );
-         result.Place = tmp;
+         result.Place = newTemporary(result.t);
+         genQuad(op, Var(t1.Place), Var(t2.Place), Var(result.Place));
+         break;
+      case '=': case '!': case '<': case '>': case ',': case '.':
+         // Code for condition
+         result.True = makeList(nextQuad());
+         genQuad(op, Var(t1.Place), Var(t2.Place), EMT);
+         result.False = makeList(nextQuad());
+         genQuad(JUMP, EMT, EMT, EMT);
          break;
    }
+
+   return result;
+}
+
+rlvalue unopCodeGen(char op, rlvalue t) {
+   rlvalue result;
+
+   result.t = unopTypeCheck(op, t.t);
+   if (op == '-') {
+      result.Place = newTemporary(result.t);
+      genQuad('-', Cnst(0), Var(t.Place), Var(result.Place));
+      return result;
+   } else if (op == '+')
+      return t;
+}
+
+SymbolEntry *findLvaluePlace(lvalue l) {
+   if (l.addr->entryType == ENTRY_CONSTANT)
+      return l.array;
+   else {
+      SymbolEntry *p = newTemporary(typePointer(l.type));
+      genQuad(ARRAY, Var(l.array), Var(l.addr), Var(p));
+      return p;
+   }
+}
+
+rlvalue genCodeBooleanExpr(rlvalue x, SymbolEntry *p) {
+   rlvalue result;
+
+   backpatch(x.True, nextQuad());
+   genQuad(ASG, Cnst(1), EMT, Var(p));
+
+   result.Next = makeList(nextQuad());
+   genQuad(JUMP, EMT, EMT, EMT); 
+
+   backpatch(x.False, nextQuad());
+   genQuad(ASG, Cnst(0), EMT, Var(p));
+
+   result.t = typeBoolean;
+   result.Place = p;
 
    return result;
 }

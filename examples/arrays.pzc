@@ -1,0 +1,11 @@
+const int A = 100, B = 200;
+
+PROGRAM test() {
+   int a[A][B];
+   int b[B][A];
+   int c[A+B];
+
+   int i, j, k;
+
+   WRITE(a[ b[i][j] ][ c[k] ]);
+}
