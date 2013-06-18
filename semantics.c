@@ -407,9 +407,10 @@ rlvalue unopCodeGen(char op, rlvalue t) {
    if (op == '-') {
       result.Place = newTemporary(result.t);
       genQuad('-', Cnst(0), Var(t.Place), Var(result.Place));
-      return result;
    } else if (op == '+')
-      return t;
+      result = t;
+
+   return result;
 }
 
 SymbolEntry *findLvaluePlace(lvalue l) {

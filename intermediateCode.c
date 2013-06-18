@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "general.h"
+#include "error.h"
 #include "symbol.h"
 #include "intermediateCode.h"
 

@@ -1,0 +1,33 @@
+PROC quicksort(int a[], int n, int m)
+{
+   int i, j, tmp;
+
+   if (n <= m) return;
+
+   /* Code starts here */
+   i = m;
+   j = n;
+
+   while (i <= j)
+   {
+      while (a[i] < a[ (m + n) / 2 ]) i++;
+      while (a[j] > a[ (m + n) / 2 ]) j--;
+
+      if (i <= j)
+      {
+         tmp = a[i];
+         a[i] = a[j];
+         a[j] = tmp;
+         i++;
+         j--;
+      }
+   }
+
+   quicksort(a, m, j);
+   quicksort(a, i, n);
+}
+
+PROGRAM makis()
+{
+   WRITELN("Hello World");
+}

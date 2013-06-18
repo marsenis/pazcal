@@ -128,26 +128,14 @@ bool insideRoutine = false; // Used for generating intermediate code
 %left '*' '/' '%'
 %left UNOP
 
-/* TODO: For Semantic Analysis:
-         # Type checking on expressions
-         # Semantic Analysis on statements
-         # break/continue only inside while/for/switch. (with special rule for switch)
-         # function call type checking
-         # array bounds checking
-         # constants evaluation
-         # add build-in functions to the outer scope
-         # multidimensional arrays
-         # CODE CLEANUP
-
-
-         ** ALL DONE :) **
-
-  TODO: For Intermediate code generation
+/* TODO: For Intermediate code generation
          * Function call ImmC
          * For loop ImmC
+         * do - while ImmC
+         * Switch statement ImmC
          * Variable initialization ImmC
+         * Reduce/Reduce Conflict resolution due to nonterminal N appearing before else
          * !! Massive Code Cleanup !!
-
 */
 %%
 
@@ -523,17 +511,19 @@ stmt : ';' { $$.Next = NULL; }
          if (!compatibleTypes($2.t, func->u.eFunction.resultType))
             error("Incompatible types in return statement");
 
-         SymbolEntry *tmp = newTemporary(func->u.eFunction.resultType);
-         if (equalType($2.t, typeBoolean))
-            result = genCodeBooleanExpr($2, tmp);
-         else
-            result = $2;
+         if (!equalType(func->u.eFunction.resultType, typeVoid)) {
+            SymbolEntry *tmp = newTemporary(func->u.eFunction.resultType);
+            if (equalType($2.t, typeBoolean))
+               result = genCodeBooleanExpr($2, tmp);
+            else
+               result = $2;
 
-         backpatch(result.Next, nextQuad());
-         if (equalType(result.t, typeVoid))
-            genQuad(RET, EMT, EMT, EMT);
-         else
-            genQuad(RETV, Var(result.Place), EMT, EMT); // TODO: replace RETV with $$
+            backpatch(result.Next, nextQuad());
+            if (equalType(result.t, typeVoid))
+               genQuad(RET, EMT, EMT, EMT);
+            else
+               genQuad(RETV, Var(result.Place), EMT, EMT); // TODO: replace RETV with $$
+         }
       }
       | write '(' opt_format ')' ';'
       | block { $$ = $1; };
