@@ -1,0 +1,15 @@
+FUNC bool f(bool p) { return p || !p; }
+//FUNC int g(int x) { return x*x - x; }
+
+PROGRAM functions() {
+   /*
+   int n, m;
+   n = 1;
+   m = 3;
+   n = g( n + g(m - 1) );
+   */
+   bool p, q;
+   p = true;
+   q = false;
+   p = f(f(p || q));
+}

@@ -112,9 +112,9 @@ const char *fix(opts id) {
          break;
       case PASS:
          switch (id.content.mode) {
-            case PASS_BY_VALUE: return "by value";
-            case PASS_BY_REFERENCE: return "by reference";
-            case PASS_RET: return "by return value";
+            case PASS_BY_VALUE: return "V"; //return "by value";
+            case PASS_BY_REFERENCE: return "R"; //return "by reference";
+            case PASS_RET: return "RET"; //return "by return value";
          }
          break;
       case EMPTY:
@@ -167,10 +167,12 @@ void printImm() {
             printf("%d: Jump to label %s\n", i, fix(immCode[i].z));
             break;
          case CALL:
-            printf("%d: Call unit %s\n", i, fix(immCode[i].z));
+            printf("%d: call -, -, %s\n", i, fix(immCode[i].z));
+            //printf("%d: Call unit %s\n", i, fix(immCode[i].z));
             break;
          case PAR:
-            printf("%d: Pass parameter %s with mode %s\n", i, fix(immCode[i].y), fix(immCode[i].x));
+            printf("%d: pass %s, %s, -\n", i, fix(immCode[i].x), fix(immCode[i].y));
+            //printf("%d: Pass parameter %s with mode %s\n", i, fix(immCode[i].x), fix(immCode[i].y));
             break;
          case RET:
             printf("%d: ret, -, -, -\n", i);

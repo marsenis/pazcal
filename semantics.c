@@ -29,23 +29,32 @@ Stack push(Stack S, SymbolEntry* p) {
    return t;
 }
 
-Stack paramCheck(Stack Func, Stack Param, Type expr) {
+Stack paramCodeGen(Stack Func, Stack Param, rlvalue expr) {
    SymbolEntry *f = top(Func);
    SymbolEntry *t = top(Param);
 
    if (t == NULL)
       error("Function \"%s\" needs less arguments", f->id);
-   else if ( !assignmentCompatibleTypes(t->u.eParameter.type, expr)) {
+   else if ( !assignmentCompatibleTypes(t->u.eParameter.type, expr.t)) {
       error("Type missmatch on the parameters given to the function \"%s\"", f->id);
 #ifdef DEBUG_SYMBOL
       printf("Type missmatch ");
       printType(t->u.eParameter.type);
       printf(", ");
-      printType(expr);
+      printType(expr.t);
       printf(" on the parameters given to the function \"%s\"\n", f->id);
 #endif
    }
    
+   rlvalue result;
+   if (equalType(expr.t, typeBoolean)) {
+      SymbolEntry *tmp = newTemporary(typeBoolean);
+      result = genCodeBooleanExpr(expr, tmp);
+      backpatch(result.Next, nextQuad());
+   } else
+      result = expr;
+
+   genQuad(PAR, Var(result.Place), Mode(t->u.eParameter.mode), EMT);
    Param = pop(Param);
    return push(Param, t->u.eParameter.next);
 }

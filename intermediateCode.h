@@ -8,6 +8,7 @@
 #define EMT ((opts) { EMPTY, 0 })  // Empty Quad
 #define Var(X)  ( (opts) { VAR  , (contentType) { .variable = (X) } } )
 #define Cnst(X) ( (opts) { CONST, (contentType) { .constant = (X) } } )
+#define Mode(X) ( (opts) { PASS,  (contentType) { .mode = (X) } } )
 
 /* ------------------- Data structures ------------------- */
 // TODO: retv is depricated and should be replaced by assignment to $$

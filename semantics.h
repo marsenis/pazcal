@@ -33,7 +33,7 @@ rlvalue unopCodeGen(char,  rlvalue);
 SymbolEntry *findLvaluePlace(lvalue);
 rlvalue genCodeBooleanExpr(rlvalue, SymbolEntry*);
 
-Stack paramCheck(Stack, Stack, Type);
+Stack paramCodeGen(Stack, Stack, rlvalue);
 
 void addLibraryFunctions();
 

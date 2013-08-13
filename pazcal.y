@@ -100,7 +100,7 @@ bool insideRoutine = false; // Used for generating intermediate code
 %type<Lvalue>        l_value;
 %type<chr>           assign
 /*%type<integer>       more_l_value; */
-%type<t>             call
+%type<RLvalue>       call
 %type<RLvalue>       opt_expr
 %type<t>             opt_format_expr
 %type<chr>           pm
@@ -132,6 +132,7 @@ bool insideRoutine = false; // Used for generating intermediate code
          * Function call ImmC
          * For loop ImmC
          * do - while ImmC
+         * break/continue for loops
          * Switch statement ImmC
          * Variable initialization ImmC
          * Reduce/Reduce Conflict resolution due to nonterminal N appearing before else
@@ -285,7 +286,7 @@ expr : T_int_const         { $$.t = typeInteger; $$.Place = newConstant(newConst
              genQuad(JUMP, EMT, EMT, EMT);
           }
        }
-     | call                { $$.t = $1; }
+     | call                { $$ = $1; }
      | '+' expr %prec UNOP { $$ = unopCodeGen('+', $2); }
      | '-' expr %prec UNOP { $$ = unopCodeGen('-', $2); }
      | '!' expr %prec UNOP
@@ -376,15 +377,32 @@ call : T_id '('
          {
             if ( top(Param) != NULL )
                error("Function \"%s\" needs more arguments", (top(Func))->id);
-            $$ = (top(Func))->u.eFunction.resultType;
+
+            $$.t = (top(Func))->u.eFunction.resultType;
+            if (!equalType($$.t, typeVoid)) {
+               SymbolEntry *t = newTemporary($$.t);
+               $$.Place = t;
+
+               genQuad(PAR, Var(t), Mode(PASS_RET), EMT);
+
+            }
+            genQuad(CALL, EMT, EMT, Var(top(Func)));
+
+            if (equalType($$.t, typeBoolean)) {
+               $$.True = makeList(nextQuad());
+               genQuad(IFB, Var($$.Place), EMT, EMT);
+               $$.False = makeList(nextQuad());
+               genQuad(JUMP, EMT, EMT, EMT);
+            }
+
             Func = pop(Func);
             Param = pop(Param);
          };
 
 opt_call      : /* Empty */
-              | expr { Param = paramCheck(Func, Param, $1.t); } more_opt_call ;
+              | expr { Param = paramCodeGen(Func, Param, $1); } more_opt_call ;
 more_opt_call : /* Empty */
-              | ',' expr { Param = paramCheck(Func, Param, $2.t); } more_opt_call ;
+              | ',' expr { Param = paramCodeGen(Func, Param, $2); } more_opt_call ;
 
 block : '{'
          {
@@ -445,7 +463,7 @@ stmt : ';' { $$.Next = NULL; }
 
          $$.Next = NULL;
       }
-      | call ';' { if (!equalType($1, typeVoid)) warning("ignoring function result"); }
+      | call ';' { if (!equalType($1.t, typeVoid)) warning("ignoring function result"); }
       | "if" '(' expr ')' M stmt
          {
             if (!equalType($3.t, typeBoolean))
@@ -513,17 +531,21 @@ stmt : ';' { $$.Next = NULL; }
 
          if (!equalType(func->u.eFunction.resultType, typeVoid)) {
             SymbolEntry *tmp = newTemporary(func->u.eFunction.resultType);
-            if (equalType($2.t, typeBoolean))
+            if (equalType($2.t, typeBoolean)) {
                result = genCodeBooleanExpr($2, tmp);
-            else
+               backpatch(result.Next, nextQuad());
+            } else
                result = $2;
 
-            backpatch(result.Next, nextQuad());
+            genQuad(RETV, Var(result.Place), EMT, EMT); // TODO: replace RETV with $$
+            /*
             if (equalType(result.t, typeVoid))
                genQuad(RET, EMT, EMT, EMT);
             else
                genQuad(RETV, Var(result.Place), EMT, EMT); // TODO: replace RETV with $$
-         }
+            */
+         } else genQuad(RET, EMT, EMT, EMT);
+            
       }
       | write '(' opt_format ')' ';'
       | block { $$ = $1; };
