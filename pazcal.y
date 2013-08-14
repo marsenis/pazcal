@@ -17,7 +17,12 @@
 */
 Type constType, varType, arrayType;
 SymbolEntry *func, *p;
-Stack Func = NULL, Param = NULL, Array = NULL;
+Stack Func = NULL,     // SymbolEntry pointers to current function (the one being evaluated for calling)
+      Param = NULL,    // SymbolEntry pointers to current function's parameter list
+      Array = NULL,    // SymbolEntry pointers to current array
+      Breaks = NULL,   // Next lists (used in backpatching) for jumps which correspond
+                       //     to breaks (only inside loops for now) TODO: implement for switch as well
+      Continues = NULL; // Next lists (used in backpatching) for jumps which correspong to continues
 int openLoops = 0;
 unsigned long long cannotBreak = 0; // Used as bitwise stack of boolean values
 #define PUSH_LOOP   cannotBreak = (cannotBreak << 1); openLoops++
@@ -96,6 +101,7 @@ bool insideRoutine = false; // Used for generating intermediate code
 %type<t>             proc_func
 %type<cnst>          const_expr
 %type<cnst>          opt_const_expr
+%type<RLvalue>       opt_var_init
 %type<RLvalue>       expr
 %type<Lvalue>        l_value;
 %type<chr>           assign
@@ -132,7 +138,7 @@ bool insideRoutine = false; // Used for generating intermediate code
          X Function call ImmC
          * For loop ImmC
          X do - while ImmC
-         * break/continue for loops
+         X break/continue for loops
          * Switch statement ImmC
          * Variable initialization ImmC
          * Reduce/Reduce Conflict resolution due to nonterminal N appearing before else
@@ -156,11 +162,24 @@ var_def : type { varType = $1; } var_init opt_var_def ';' ;
 opt_var_def : /* Empty */ | ',' var_init opt_var_def ;
 
 var_init : T_id opt_var_init
-           { newVariable($1, varType); }
+           {
+              SymbolEntry *p = newVariable($1, varType);
+              rlvalue result;
+
+              if (!equalType($2.t, typeVoid)) {
+                  if (equalType($2.t, typeBoolean)) {
+                     result = genCodeBooleanExpr($2, p);
+                     backpatch(result.Next, nextQuad()+1);
+                  } else
+                     result = $2;
+                  genQuad(ASG, Var(result.Place), EMT, Var(p));
+              }
+            }
          | T_id '[' { arrayType = varType; } const_expr ']'
            { arrayType = arrayTypeCheck( $4, arrayType ); } array_var_init
            { newVariable($1, arrayType); };
-opt_var_init : /* Empty */ | '=' expr ;
+opt_var_init : /* Empty */ { $$.t = typeVoid; }
+               | '=' expr  { $$ = $2; };
 array_var_init : /* Empty */
                | '[' const_expr ']'
                { arrayType = arrayTypeCheck( $2, arrayType ); } array_var_init ;
@@ -368,8 +387,8 @@ call : T_id '('
             p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
             if (p->entryType != ENTRY_FUNCTION)
                error("object \"%s\" is not callable", $1);
-            Func = push(Func, p);
-            Param = push(Param, p->u.eFunction.firstArgument);
+            Func = pushSymEntry(Func, p);
+            Param = pushSymEntry(Param, p->u.eFunction.firstArgument);
 #ifdef DEBUG_SYMBOL
             warning("Pushing param pointer %d for function \"%s\"", Param->p, p->id);
 #endif
@@ -377,9 +396,9 @@ call : T_id '('
       opt_call ')'
          {
             if ( top(Param) != NULL )
-               error("Function \"%s\" needs more arguments", (top(Func))->id);
+               error("Function \"%s\" needs more arguments", ((SymbolEntry *) top(Func))->id);
 
-            $$.t = (top(Func))->u.eFunction.resultType;
+            $$.t = ((SymbolEntry *) top(Func))->u.eFunction.resultType;
             if (!equalType($$.t, typeVoid)) {
                SymbolEntry *t = newTemporary($$.t);
                $$.Place = t;
@@ -387,7 +406,7 @@ call : T_id '('
                genQuad(PAR, Var(t), Mode(PASS_RET), EMT);
 
             }
-            genQuad(CALL, EMT, EMT, Var(top(Func)));
+            genQuad(CALL, EMT, EMT, Var((SymbolEntry *) top(Func)));
 
             if (equalType($$.t, typeBoolean)) {
                $$.True = makeList(nextQuad());
@@ -488,6 +507,10 @@ stmt : ';' { $$.Next = NULL; }
             PUSH_LOOP;
             if (!equalType($4.t, typeBoolean))
                error("condition of the 'while' statement is not a boolean");
+
+            Breaks = pushList(Breaks, (labelListType *) NULL);
+            //Continues = pushLabel(Continues, $2);
+            Continues = pushList(Continues, (labelListType *) NULL);
          }
          stmt
          {
@@ -497,6 +520,12 @@ stmt : ';' { $$.Next = NULL; }
             backpatch($8.Next, $2);
             $$.Next = $4.False;
             genQuad(JUMP, EMT, EMT, (opts) { LBL, (contentType) { .label = $2 } });
+
+            $$.Next = mergeLists($$.Next, (labelListType *) top(Breaks));
+            Breaks = pop(Breaks);
+
+            backpatch((labelListType *) top(Continues), $2);
+            Continues = pop(Continues);
          }
       | "FOR" '(' T_id ','
          {
@@ -508,7 +537,12 @@ stmt : ';' { $$.Next = NULL; }
                error("control variable in FOR statement is not an integer");
          }
          range ')' { PUSH_LOOP; } stmt { POP_LOOP; }
-      | "do" M { PUSH_LOOP; } stmt "while" M '(' expr ')' ';'
+      | "do" M
+         {
+            PUSH_LOOP;
+            Breaks = pushList(Breaks, (labelListType *) NULL);
+            Continues = pushList(Continues, (labelListType *) NULL);
+         } stmt "while" M '(' expr ')' ';'
          {
             backpatch($8.True, $2);
             backpatch($4.Next, $6);
@@ -517,7 +551,14 @@ stmt : ';' { $$.Next = NULL; }
 
             if (!equalType($8.t, typeBoolean))
                error("condition of the 'do-while' statement is not a boolean");
+
             POP_LOOP;
+            $$.Next = mergeLists($$.Next, (labelListType *) top(Breaks));
+            Breaks = pop(Breaks);
+
+            labelListType *p = (labelListType *) top(Continues);
+            Continues = pop(Continues);
+            backpatch(p, $6);
          }
       | "switch" '(' expr ')'
          {
@@ -526,8 +567,29 @@ stmt : ';' { $$.Next = NULL; }
                error("switch expression is not an integer");
          }
          '{' opt_case_clause opt_default_clause '}' { POP_SWITCH; cannotBreak >>= 1; }
-      | "break" ';'           { if ((cannotBreak & 1)) error("break cannot be used in this context"); }
-      | "continue" ';'        { if (!openLoops) error("continue used outside of a loop"); }
+      | "break" ';'
+         {
+            if ((cannotBreak & 1)) error("break cannot be used in this context");
+            
+            labelListType *Next = (labelListType *) top(Breaks);
+            Breaks = pop(Breaks);
+            Next = mergeLists(Next, makeList(nextQuad()));
+            Breaks = pushList(Breaks, Next);
+            genQuad(JUMP, EMT, EMT, EMT);
+         }
+      | "continue" ';'
+         {
+            if (!openLoops) error("continue used outside of a loop");
+
+            labelListType *Next = (labelListType *) top(Continues);
+            Continues = pop(Continues);
+            Next = mergeLists(Next, makeList(nextQuad()));
+            Continues = pushList(Continues, Next);
+            genQuad(JUMP, EMT, EMT, EMT);
+
+            //int *p = (int *) top(Continues);
+            //genQuad(JUMP, EMT, EMT, (opts) { LBL, (contentType) { .label = *p } });
+         }
       | "return" opt_expr ';'
       {
          rlvalue result;

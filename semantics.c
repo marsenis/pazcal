@@ -16,22 +16,53 @@ Stack pop(Stack S) {
    return t;
 }
 
-SymbolEntry* top(Stack S) {
+void* top(Stack S) {
    if (S == NULL) internal("SymbolEntry Stack is empty");
-   return S->p;
+   switch (S->type) {
+      case SYM_ENTRY:
+         return (void*)S->u.p;
+      case NEXT_LIST:
+         return (void*)S->u.l;
+      case LABEL_LIST:
+         return (void*)S->u.lbl;
+   }
 }
 
-Stack push(Stack S, SymbolEntry* p) {
+Stack pushSymEntry(Stack S, SymbolEntry *p) {
    Stack t = (Stack) new(sizeof(struct StackTag));
 
-   t->p = p;
+   t->type = SYM_ENTRY;
+   t->u.p = p;
+
+   t->next = S;
+   return t;
+}
+
+Stack pushList(Stack S, labelListType *p) {
+   Stack t = (Stack) new(sizeof(struct StackTag));
+
+   t->type = NEXT_LIST;
+   t->u.l = p;
+
+   t->next = S;
+   return t;
+}
+
+Stack pushLabel(Stack S, int lbl) {
+   Stack t = (Stack) new(sizeof(struct StackTag));
+
+   t->type = LABEL_LIST;
+   int *p = (int *) new(sizeof(int));
+   *p = lbl;
+   t->u.lbl = p;
+
    t->next = S;
    return t;
 }
 
 Stack paramCodeGen(Stack Func, Stack Param, rlvalue expr) {
-   SymbolEntry *f = top(Func);
-   SymbolEntry *t = top(Param);
+   SymbolEntry *f = (SymbolEntry *) top(Func);
+   SymbolEntry *t = (SymbolEntry *) top(Param);
 
    if (t == NULL)
       error("Function \"%s\" needs less arguments", f->id);
@@ -56,7 +87,7 @@ Stack paramCodeGen(Stack Func, Stack Param, rlvalue expr) {
 
    genQuad(PAR, Var(result.Place), Mode(t->u.eParameter.mode), EMT);
    Param = pop(Param);
-   return push(Param, t->u.eParameter.next);
+   return pushSymEntry(Param, t->u.eParameter.next);
 }
 
 RepTypes applyInteger(char op, RepInteger x, RepInteger y) {

@@ -1,0 +1,19 @@
+PROGRAM breaks() {
+   const bool p = true, q = false;
+
+   int i = 0, a = 2 * i + 1;
+   bool k = (p && q) || (!p && !q);
+
+   do {
+      a++;
+      if (i == 5) continue;
+      while (a != 0) {
+         a *= 2;
+         continue;
+         a--;
+      }
+   } while ( i <= 10 );
+
+   a++;
+   WRITELN("Hello");
+}
