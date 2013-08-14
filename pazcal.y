@@ -129,13 +129,14 @@ bool insideRoutine = false; // Used for generating intermediate code
 %left UNOP
 
 /* TODO: For Intermediate code generation
-         * Function call ImmC
+         X Function call ImmC
          * For loop ImmC
-         * do - while ImmC
+         X do - while ImmC
          * break/continue for loops
          * Switch statement ImmC
          * Variable initialization ImmC
          * Reduce/Reduce Conflict resolution due to nonterminal N appearing before else
+         * WRITE / READ ImmC
          * !! Massive Code Cleanup !!
 */
 %%
@@ -507,9 +508,14 @@ stmt : ';' { $$.Next = NULL; }
                error("control variable in FOR statement is not an integer");
          }
          range ')' { PUSH_LOOP; } stmt { POP_LOOP; }
-      | "do" { PUSH_LOOP; } stmt "while" '(' expr ')' ';'
+      | "do" M { PUSH_LOOP; } stmt "while" M '(' expr ')' ';'
          {
-            if (!equalType($6.t, typeBoolean))
+            backpatch($8.True, $2);
+            backpatch($4.Next, $6);
+            $$.Next = $8.False;
+            genQuad(JUMP, EMT, EMT, (opts) { LBL, (contentType) { .label = $6 } });
+
+            if (!equalType($8.t, typeBoolean))
                error("condition of the 'do-while' statement is not a boolean");
             POP_LOOP;
          }
