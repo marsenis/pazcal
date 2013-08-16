@@ -9,6 +9,7 @@
 #define Var(X)  ( (opts) { VAR  , (contentType) { .variable = (X) } } )
 #define Cnst(X) ( (opts) { CONST, (contentType) { .constant = (X) } } )
 #define Mode(X) ( (opts) { PASS,  (contentType) { .mode = (X) } } )
+#define Lbl(X)  ( (opts) { LBL,   (contentType) { .label  = (X) } } )
 
 /* ------------------- Data structures ------------------- */
 // TODO: retv is depricated and should be replaced by assignment to $$
@@ -62,6 +63,16 @@ typedef struct {
    SymbolEntry *array;
    Type        type;
 } lvalue;
-   
 
+typedef struct {
+   rlvalue      from, to, step;
+   int          direction;
+} Range;
+
+typedef struct {
+   SymbolEntry   *t1, *t2, *t3, *t4;
+   labelListType *Next;
+   int            LoopBeg;
+} loopContext;
+   
 #endif

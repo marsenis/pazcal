@@ -7,14 +7,13 @@
 #include "intermediateCode.h"
 
 // Stacks used for inheritted atributes in SDT shemas.
-enum StackType { SYM_ENTRY, NEXT_LIST, LABEL_LIST };
+enum StackType { SYM_ENTRY, NEXT_LIST };
 
 typedef struct StackTag* Stack;
 struct StackTag {
    union {
       SymbolEntry *p;
       labelListType *l;
-      int *lbl; // TODO: remove this. most likely it's not needed
    } u;
 
    enum StackType type;
@@ -25,7 +24,7 @@ Stack pop(Stack);
 void* top(Stack);
 Stack pushSymEntry(Stack, SymbolEntry*);
 Stack pushList(Stack, labelListType*);
-Stack pushLabel(Stack, int);
+Stack pushRange(Stack, Range);
 
 Const applyUnop(char, Const);
 Const applyOperation(char, Const, Const);

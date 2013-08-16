@@ -1,0 +1,6 @@
+FUNC bool something() { return true; }
+
+PROGRAM breaks2() {
+   while (true)
+      if (something()) break;
+}

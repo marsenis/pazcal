@@ -23,8 +23,6 @@ void* top(Stack S) {
          return (void*)S->u.p;
       case NEXT_LIST:
          return (void*)S->u.l;
-      case LABEL_LIST:
-         return (void*)S->u.lbl;
    }
 }
 
@@ -43,18 +41,6 @@ Stack pushList(Stack S, labelListType *p) {
 
    t->type = NEXT_LIST;
    t->u.l = p;
-
-   t->next = S;
-   return t;
-}
-
-Stack pushLabel(Stack S, int lbl) {
-   Stack t = (Stack) new(sizeof(struct StackTag));
-
-   t->type = LABEL_LIST;
-   int *p = (int *) new(sizeof(int));
-   *p = lbl;
-   t->u.lbl = p;
 
    t->next = S;
    return t;

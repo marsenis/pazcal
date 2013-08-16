@@ -43,6 +43,8 @@ bool insideRoutine = false; // Used for generating intermediate code
    rlvalue    RLvalue;
    lvalue     Lvalue;
    Type       t;
+   Range      RAnge;
+   loopContext LoopContext;
 
    Const      cnst;
 }
@@ -113,7 +115,9 @@ bool insideRoutine = false; // Used for generating intermediate code
 %type<RLvalue>       stmt
 %type<RLvalue>       block
 %type<RLvalue>       opt_block
-
+%type<RLvalue>       opt_step
+%type<integer>       to_downto
+%type<RAnge>         range
 
 %type<integer>       M
 %type<RLvalue>       N
@@ -136,14 +140,15 @@ bool insideRoutine = false; // Used for generating intermediate code
 
 /* TODO: For Intermediate code generation
          X Function call ImmC
-         * For loop ImmC
+         ~ For loop ImmC
          X do - while ImmC
          X break/continue for loops
          * Switch statement ImmC
-         * Variable initialization ImmC
+         X Variable initialization ImmC
          * Reduce/Reduce Conflict resolution due to nonterminal N appearing before else
          * WRITE / READ ImmC
          * !! Massive Code Cleanup !!
+         * Use midrule actions for context saving instead of ad hoc Stacks
 */
 %%
 
@@ -535,8 +540,57 @@ stmt : ';' { $$.Next = NULL; }
                    || (p->entryType == ENTRY_VARIABLE && equalType(p->u.eVariable.type, typeInteger) )
                    || (p->entryType == ENTRY_PARAMETER && equalType(p->u.eParameter.type, typeInteger) ) ) )
                error("control variable in FOR statement is not an integer");
+
+            Breaks = pushList(Breaks, (labelListType *) NULL);
+            Continues = pushList(Continues, (labelListType *) NULL);
          }
-         range ')' { PUSH_LOOP; } stmt { POP_LOOP; }
+         range ')'
+         {
+            PUSH_LOOP;
+
+            SymbolEntry *t1 = $6.from.Place; // Holds the FROM part
+            SymbolEntry *t2 = $6.to.Place; // Holds the TO part
+            SymbolEntry *t3 = $6.step.Place; // Holds the STEP
+            SymbolEntry *t4 = newTemporary(typeInteger); // Holds the current value of the control variable
+            labelListType *Next = NULL;
+            p = lookupEntry($3, LOOKUP_ALL_SCOPES, true); // Symboltable entry for control variable
+
+            if ($6.direction == -1) // Negative step
+               genQuad('-', Cnst(0), Var(t3), Var(t3));
+
+            genQuad(ASG, Var(t1), EMT, Var(t4));
+
+            int LoopBeg = nextQuad();
+            genQuad(ASG, Var(t4), EMT, Var(p));
+            if ($6.direction == 1)
+               genQuad(',', Var(p), Var(t2), Lbl(nextQuad() + 1));
+            else
+               genQuad('.', Var(p), Var(t2), Lbl(nextQuad() + 1));
+
+            Next = makeList( nextQuad() );
+            genQuad(JUMP, EMT, EMT, EMT);
+
+            $<LoopContext>$ = (loopContext) { .t1 = t1, .t2 = t2, .t3 = t3, .t4 = t4, .Next = Next, .LoopBeg = LoopBeg };
+         }
+         stmt
+         {
+            p = lookupEntry($3, LOOKUP_ALL_SCOPES, true); // Symboltable entry for control variable
+
+            backpatch($9.Next, nextQuad());
+
+            $$.Next = mergeLists( $<LoopContext>8.Next, (labelListType *) top( Breaks ) );
+            Breaks = pop(Breaks);
+
+            backpatch( (labelListType *) top(Continues), nextQuad() );
+            Continues = pop(Continues);
+
+            if ($6.direction == 1) genQuad('+', Var($<LoopContext>8.t4), Var($<LoopContext>8.t3), Var($<LoopContext>8.t4));
+            else                   genQuad('-', Var($<LoopContext>8.t4), Var($<LoopContext>8.t3), Var($<LoopContext>8.t4));
+
+            genQuad(JUMP, EMT, EMT, Lbl($<LoopContext>8.LoopBeg));
+
+            POP_LOOP;
+         }
       | "do" M
          {
             PUSH_LOOP;
@@ -655,12 +709,22 @@ range : expr
          if (!equalType($4.t, typeInteger) )
             error("range expression in FOR statement is not an integer");
       }
-      opt_step ;
-to_downto : "TO" | "DOWNTO" ;
-opt_step : /* Empty */ | "STEP" expr 
+      opt_step
+      { $$ = (Range) { .from = $1, .to = $4, .direction = $3, .step = $6 }; };
+to_downto : "TO" { $$ = 1; } | "DOWNTO" { $$ = -1; };
+opt_step : /* Empty */
+         {
+            SymbolEntry *tmp = newTemporary(typeInteger);
+            genQuad(ASG, Cnst(1), EMT, Var(tmp));
+            $$ = (rlvalue) { .t = typeInteger, .Place = tmp };
+         }
+         | "STEP" expr 
          {
             if (!equalType($2.t, typeInteger) )
                error("step expression in FOR statement is not an integer");
+
+            //TODO: add check for negative step
+            $$ = $2;
          };
 
 clause : more_clause opt_clause ;
