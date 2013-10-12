@@ -648,4 +648,7 @@ void addLibraryFunctions() {
    newParameter("src", typeIArray(typeChar), PASS_BY_REFERENCE, p);
    closeScope();
    endFunctionHeader(p, typeVoid);
+
+   newConstant("_SPACE", typeChar, ' ');
+   newConstant("_NEWLINE", typeChar, ' ');
 }

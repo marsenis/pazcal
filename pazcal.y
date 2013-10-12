@@ -16,6 +16,10 @@
    it won't be able to know it's type
 */
 Type constType, varType, arrayType;
+
+int writeType; // 0 for write, 1 for writeln, etc...
+bool firstWriteArgument;
+
 SymbolEntry *func, *p;
 Stack Func = NULL,     // SymbolEntry pointers to current function (the one being evaluated for calling)
       Param = NULL,    // SymbolEntry pointers to current function's parameter list
@@ -29,6 +33,9 @@ unsigned long long cannotBreak = 0; // Used as bitwise stack of boolean values
 #define POP_LOOP    cannotBreak >>= 1; openLoops--
 #define PUSH_SWITCH cannotBreak = (cannotBreak << 1) | 1
 #define POP_SWITCH  cannotBreak >>= 1
+
+#define SPACE   lookupEntry("_SPACE",   LOOKUP_ALL_SCOPES, true)
+#define NEWLINE lookupEntry("_NEWLINE", LOOKUP_ALL_SCOPES, true)
 
 bool insideRoutine = false; // Used for generating intermediate code
                             // for the begining/ending of a routine
@@ -140,13 +147,16 @@ bool insideRoutine = false; // Used for generating intermediate code
 
 /* TODO: For Intermediate code generation
          X Function call ImmC
-         ~ For loop ImmC
+        ~X For loop ImmC
          X do - while ImmC
          X break/continue for loops
          * Switch statement ImmC
          X Variable initialization ImmC
          * Reduce/Reduce Conflict resolution due to nonterminal N appearing before else
-         * WRITE / READ ImmC
+         ~ WRITE / READ ImmC
+            * FORM
+            * booleans
+            * READ
          * !! Massive Code Cleanup !!
          * Use midrule actions for context saving instead of ad hoc Stacks
 */
@@ -283,7 +293,7 @@ const_expr : T_int_const        { $$.type = typeInteger; $$.value.vInteger = $1;
 expr : T_int_const         { $$.t = typeInteger; $$.Place = newConstant(newConstName(), typeInteger, $1); }
      | T_float_const       { $$.t = typeReal;    $$.Place = newConstant(newConstName(), typeReal,    $1); }
      | T_char_const        { $$.t = typeChar;    $$.Place = newConstant(newConstName(), typeChar,    $1); }
-     | T_string_literal    { $$.t = typeArray(strlen$1, typeChar); $$.Place = newConstant(newConstName(), typeArray(strlen$1, typeChar), $1);}
+     | T_string_literal    { $$.t = typeArray(strlen($1), typeChar); $$.Place = newConstant(newConstName(), typeArray(strlen($1), typeChar), $1); }
      | "true"
       {
          $$.t = typeBoolean;
@@ -669,7 +679,13 @@ stmt : ';' { $$.Next = NULL; }
          } else genQuad(RET, EMT, EMT, EMT);
             
       }
-      | write '(' opt_format ')' ';'
+      | write { firstWriteArgument = true; } '(' opt_format ')'
+         {
+            if (writeType % 2 == 1) {
+               genQuad(PAR, Var(NEWLINE), Mode(PASS_BY_VALUE), EMT);
+               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
+            }
+         } ';'
       | block { $$ = $1; };
 pm                : "++" { $$ = '+'; } | "--" { $$ = '-'; };
 opt_case_clause   : /* Empty */
@@ -731,12 +747,34 @@ clause : more_clause opt_clause ;
 more_clause : /* Empty */ %prec SWITCH_BRK | stmt more_clause ;
 opt_clause : "break" ';' | "NEXT" ';' ;
 
-write : "WRITE" | "WRITELN" | "WRITESP" | "WRITESPLN" ;
+write : "WRITE"     { writeType = 0; }
+      | "WRITELN"   { writeType = 1; }
+      | "WRITESP"   { writeType = 2; }
+      | "WRITESPLN" { writeType = 3; } ;
 
 format : expr
          {
+            if (!firstWriteArgument && writeType >= 2) { // Should put a space between the arguments printed
+               genQuad(PAR, Var(SPACE), Mode(PASS_BY_VALUE), EMT);
+               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
+            }
+
             if (!arithmeticType($1.t) && !equalType($1.t, typeBoolean) && !equalType(typeIArray(typeChar), $1.t))
                error("non basic type (or string) given to a write command");
+
+            // TODO: take care of booleans
+            // TODO: take care of FORMAT
+            genQuad(PAR, Var($1.Place), Mode(PASS_BY_VALUE), EMT);
+            if (equalType($1.t, typeInteger)) 
+               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_INT", LOOKUP_ALL_SCOPES, true)));
+            else if (equalType($1.t, typeChar)) 
+               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
+            else if (equalType($1.t, typeReal)) 
+               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_REAL", LOOKUP_ALL_SCOPES, true)));
+            else if (equalType(typeIArray(typeChar), $1.t)) 
+               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_STRING", LOOKUP_ALL_SCOPES, true)));
+
+            firstWriteArgument = false;
          }
        | "FORM" '(' expr
          {

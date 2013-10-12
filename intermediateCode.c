@@ -75,14 +75,14 @@ const char *fix(opts id) {
                      sprintf(tmp, "%s", (id.content.variable->u.eConstant.value.vBoolean) ? "true" : "false" );
                      break;
                   case TYPE_CHAR:
-                     sprintf(tmp, "%c", id.content.variable->u.eConstant.value.vChar);
+                     sprintf(tmp, "\'%c\'", id.content.variable->u.eConstant.value.vChar);
                      break;
                   case TYPE_REAL:
                      sprintf(tmp, "%lf", id.content.variable->u.eConstant.value.vReal);
                      break;
                   case TYPE_ARRAY: case TYPE_IARRAY:
                      if (id.content.variable->u.eConstant.type->refType->kind == TYPE_CHAR)
-                        sprintf(tmp, "%s", id.content.variable->u.eConstant.value.vString);
+                        sprintf(tmp, "\"%s\"", id.content.variable->u.eConstant.value.vString);
                      else
                         internal("found a constant with non-regular type");
                      break;
