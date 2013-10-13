@@ -467,6 +467,48 @@ rlvalue genCodeBooleanExpr(rlvalue x, SymbolEntry *p) {
    return result;
 }
 
+void genCodeWrite(rlvalue x, bool firstWriteArgument, bool format, int writeType, rlvalue w, rlvalue d) {
+   if (!firstWriteArgument && writeType >= 2) { // Should put a space between the arguments printed
+      genQuad(PAR, Var(SPACE), Mode(PASS_BY_VALUE), EMT);
+      genQuad(PAR, Var(ONE),   Mode(PASS_BY_VALUE), EMT);
+      genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
+   }
+
+   if (!arithmeticType(x.t) && !equalType(x.t, typeBoolean) && !equalType(typeIArray(typeChar), x.t))
+      error("non basic type (or string) given to a write command");
+      
+   if (equalType(x.t, typeBoolean)) {
+      SymbolEntry *p = newTemporary(typeBoolean);
+      rlvalue r = genCodeBooleanExpr(x, p);
+      backpatch(r.Next, nextQuad());
+      genQuad(PAR, Var(p), Mode(PASS_BY_VALUE), EMT);
+   } else
+      genQuad(PAR, Var(x.Place), Mode(PASS_BY_VALUE), EMT);
+
+   if (format)
+      genQuad(PAR, Var(w.Place), Mode(PASS_BY_VALUE), EMT);
+   else
+      genQuad(PAR, Var(ONE), Mode(PASS_BY_VALUE), EMT);
+
+   if (equalType(x.t, typeInteger))
+      genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_INT", LOOKUP_ALL_SCOPES, true)));
+   else if (equalType(x.t, typeChar))
+      genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
+   else if (equalType(x.t, typeReal)) {
+      if (format && !equalType(d.t, typeVoid))
+         genQuad(PAR, Var(d.Place), Mode(PASS_BY_VALUE), EMT);
+      else {
+         SymbolEntry *q = newConstant(newConstName(), typeInteger, 7);
+         genQuad(PAR, Var(q), Mode(PASS_BY_VALUE), EMT);
+      }
+      genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_REAL", LOOKUP_ALL_SCOPES, true)));
+   }
+   else if (equalType(typeIArray(typeChar), x.t))
+      genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_STRING", LOOKUP_ALL_SCOPES, true)));
+   else if (equalType(x.t, typeBoolean))
+      genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_BOOL", LOOKUP_ALL_SCOPES, true)));
+}
+
 void addLibraryFunctions() {
    SymbolEntry *p;
 
@@ -651,4 +693,5 @@ void addLibraryFunctions() {
 
    newConstant("_SPACE", typeChar, ' ');
    newConstant("_NEWLINE", typeChar, ' ');
+   newConstant("_ONE", typeInteger, 1);
 }

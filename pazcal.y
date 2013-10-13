@@ -34,9 +34,6 @@ unsigned long long cannotBreak = 0; // Used as bitwise stack of boolean values
 #define PUSH_SWITCH cannotBreak = (cannotBreak << 1) | 1
 #define POP_SWITCH  cannotBreak >>= 1
 
-#define SPACE   lookupEntry("_SPACE",   LOOKUP_ALL_SCOPES, true)
-#define NEWLINE lookupEntry("_NEWLINE", LOOKUP_ALL_SCOPES, true)
-
 bool insideRoutine = false; // Used for generating intermediate code
                             // for the begining/ending of a routine
 %}
@@ -117,7 +114,7 @@ bool insideRoutine = false; // Used for generating intermediate code
 /*%type<integer>       more_l_value; */
 %type<RLvalue>       call
 %type<RLvalue>       opt_expr
-%type<t>             opt_format_expr
+%type<RLvalue>       opt_format_expr
 %type<chr>           pm
 %type<RLvalue>       stmt
 %type<RLvalue>       block
@@ -153,12 +150,12 @@ bool insideRoutine = false; // Used for generating intermediate code
          * Switch statement ImmC
          X Variable initialization ImmC
          * Reduce/Reduce Conflict resolution due to nonterminal N appearing before else
-         ~ WRITE / READ ImmC
-            * FORM
-            * booleans
-            * READ
+         X WRITE / READ ImmC
+            X FORM
+            X booleans
          * !! Massive Code Cleanup !!
          * Use midrule actions for context saving instead of ad hoc Stacks
+         * Proper printing of ImmC
 */
 %%
 
@@ -681,8 +678,9 @@ stmt : ';' { $$.Next = NULL; }
       }
       | write { firstWriteArgument = true; } '(' opt_format ')'
          {
-            if (writeType % 2 == 1) {
+            if (writeType % 2 == 1) { // Should print a new line
                genQuad(PAR, Var(NEWLINE), Mode(PASS_BY_VALUE), EMT);
+               genQuad(PAR, Var(ONE),     Mode(PASS_BY_VALUE), EMT);
                genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
             }
          } ';'
@@ -754,26 +752,7 @@ write : "WRITE"     { writeType = 0; }
 
 format : expr
          {
-            if (!firstWriteArgument && writeType >= 2) { // Should put a space between the arguments printed
-               genQuad(PAR, Var(SPACE), Mode(PASS_BY_VALUE), EMT);
-               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
-            }
-
-            if (!arithmeticType($1.t) && !equalType($1.t, typeBoolean) && !equalType(typeIArray(typeChar), $1.t))
-               error("non basic type (or string) given to a write command");
-
-            // TODO: take care of booleans
-            // TODO: take care of FORMAT
-            genQuad(PAR, Var($1.Place), Mode(PASS_BY_VALUE), EMT);
-            if (equalType($1.t, typeInteger)) 
-               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_INT", LOOKUP_ALL_SCOPES, true)));
-            else if (equalType($1.t, typeChar)) 
-               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
-            else if (equalType($1.t, typeReal)) 
-               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_REAL", LOOKUP_ALL_SCOPES, true)));
-            else if (equalType(typeIArray(typeChar), $1.t)) 
-               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_STRING", LOOKUP_ALL_SCOPES, true)));
-
+            genCodeWrite($1, firstWriteArgument, false, writeType, NULL, NULL);
             firstWriteArgument = false;
          }
        | "FORM" '(' expr
@@ -788,13 +767,19 @@ format : expr
          }
        opt_format_expr
          {
-            if (!equalType($8, typeInteger))
-               error("format's third parameter (decimal digits) is not an integer");
-            if (!equalType($3.t, typeReal))
-               error("expression of type REAL was expected since FORM has three parameters");
+            if (!equalType($8.t, typeVoid)) {
+               if (!equalType($8.t, typeInteger))
+                  error("format's third parameter (decimal digits) is not an integer");
+               if (!equalType($3.t, typeReal))
+                  error("expression of type REAL was expected since FORM has three parameters");
+            }
+
+            genCodeWrite($3, firstWriteArgument, true, writeType, $6, $8);
+
+            firstWriteArgument = false;
          }
        ')' ;
-opt_format_expr : /* Empty */ { $$ = typeVoid; } | ',' expr { $$ = $2.t; } ;
+opt_format_expr : /* Empty */ { $$.t = typeVoid; } | ',' expr { $$ = $2; } ;
 
 %%
 

@@ -6,6 +6,12 @@
 #include "symbol.h"
 #include "intermediateCode.h"
 
+// TODO: replace those by variables so that you don't have
+//       to perform a lookup each time you need them
+#define SPACE   lookupEntry("_SPACE",   LOOKUP_ALL_SCOPES, true)
+#define NEWLINE lookupEntry("_NEWLINE", LOOKUP_ALL_SCOPES, true)
+#define ONE     lookupEntry("_ONE",     LOOKUP_ALL_SCOPES, true)
+
 // Stacks used for inheritted atributes in SDT shemas.
 enum StackType { SYM_ENTRY, NEXT_LIST };
 

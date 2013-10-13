@@ -1,0 +1,14 @@
+PROGRAM test() {
+   /*
+   bool h = true;
+
+   h = !h;
+
+   WRITE(h or not h);
+   */
+
+   REAL x = 4.58;
+   int  y = 58;
+
+   WRITESP(x, y);
+}
