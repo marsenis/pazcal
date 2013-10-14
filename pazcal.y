@@ -108,6 +108,7 @@ bool insideRoutine = false; // Used for generating intermediate code
 %type<cnst>          const_expr
 %type<cnst>          opt_const_expr
 %type<RLvalue>       opt_var_init
+%type<cnst>          pub_opt_var_init
 %type<RLvalue>       expr
 %type<Lvalue>        l_value;
 %type<chr>           assign
@@ -161,14 +162,30 @@ bool insideRoutine = false; // Used for generating intermediate code
 
 module : /* Empty */  | declaration module ;
 
-declaration : const_def | var_def | routine | program ;
+declaration : const_def | pub_var_def | routine | program ;
 
 const_def : "const" type T_id '=' const_expr
             { constType = $2; addConstant($3, constType, $5); }
             opt_const_def ';' ;
-opt_const_def : /* Empty */ | ',' T_id '=' const_expr
-               { addConstant($2, constType, $4); }
-               opt_const_def ;
+opt_const_def : /* Empty */
+               | ',' T_id '=' const_expr { addConstant($2, constType, $4); }
+                 opt_const_def ;
+
+pub_var_def : type { varType = $1; } pub_var_init pub_opt_var_def ';' ;
+pub_opt_var_def : /* Empty */ | ',' pub_var_init pub_opt_var_def ;
+
+pub_var_init : T_id pub_opt_var_init
+           {
+              SymbolEntry *p = newVariable($1, varType);
+              SymbolEntry *q = addConstant(newConstName(), varType, $2);
+              genQuad(ASG, Var(q), EMT, Var(p));
+            }
+         | T_id '[' { arrayType = varType; }
+           const_expr ']' { arrayType = arrayTypeCheck( $4, arrayType ); }
+           array_var_init { newVariable($1, arrayType); };
+
+pub_opt_var_init : /* Empty */ { $$.type = typeVoid; }
+               | '=' const_expr  { $$ = $2; };
 
 var_def : type { varType = $1; } var_init opt_var_def ';' ;
 opt_var_def : /* Empty */ | ',' var_init opt_var_def ;
@@ -179,43 +196,60 @@ var_init : T_id opt_var_init
               rlvalue result;
 
               if (!equalType($2.t, typeVoid)) {
-                  if (equalType($2.t, typeBoolean)) {
-                     result = genCodeBooleanExpr($2, p);
-                     backpatch(result.Next, nextQuad()+1);
-                  } else
-                     result = $2;
-                  genQuad(ASG, Var(result.Place), EMT, Var(p));
+                 if (!assignmentCompatibleTypes(varType, $2.t))
+                    error("incompatible types in initialization");
+
+                 if (equalType($2.t, typeBoolean)) {
+                    result = genCodeBooleanExpr($2, p);
+                    backpatch(result.Next, nextQuad()+1);
+                 } else
+                    result = $2;
+                 genQuad(ASG, Var(result.Place), EMT, Var(p));
               }
             }
-         | T_id '[' { arrayType = varType; } const_expr ']'
-           { arrayType = arrayTypeCheck( $4, arrayType ); } array_var_init
-           { newVariable($1, arrayType); };
+         | T_id '[' { arrayType = varType; } 
+           const_expr ']' { arrayType = arrayTypeCheck( $4, arrayType ); }
+           array_var_init { newVariable($1, arrayType); };
+
 opt_var_init : /* Empty */ { $$.t = typeVoid; }
                | '=' expr  { $$ = $2; };
 array_var_init : /* Empty */
                | '[' const_expr ']'
-               { arrayType = arrayTypeCheck( $2, arrayType ); } array_var_init ;
+                  { arrayType = arrayTypeCheck( $2, arrayType ); }
+                  array_var_init ;
 
 routine_header : proc_func T_id
-                 { func = newFunction$2; openScope(); insideRoutine = true; } '(' opt_args ')'
+                 /* TODO: somehow many statements of the form
+                          function_call($i) have been replaced by
+                          function_call$i   probably by some s/../../g
+                          Fortunately Bison transforms $i to (...) so
+                          the final code is correct but I should fix it soon
+                  */
+                 { func = newFunction($2); openScope(); insideRoutine = true; }
+                 '(' opt_args ')'
                  { endFunctionHeader(func, $1);
-#ifdef DEBUG_SYMBOL
-                 printf("Begining function body:\n"); printSymbolTable();
-#endif
+                   #ifdef DEBUG_SYMBOL
+                     printf("Begining function body:\n"); printSymbolTable();
+                   #endif
                  } ;
 proc_func : "PROC" { $$ = typeVoid; } | "FUNC" type { $$ = $2; };
 parameter : type { varType = $1; } formal ;
-opt_args : /* Empty */ | parameter more_args ;
+opt_args  : /* Empty */  |     parameter more_args ;
 more_args : /* Empty */  | ',' parameter more_args ;
 
-formal : T_id { newParameter($1, varType, PASS_BY_VALUE, func); }
+formal : T_id     { newParameter($1, varType, PASS_BY_VALUE, func); }
        | '&' T_id { newParameter($2, varType, PASS_BY_REFERENCE, func); }
        | T_id '[' { arrayType = varType; } opt_const_expr ']' 
-       {
-          if ( equalType($4.type, typeVoid) ) arrayType = typeIArray(arrayType);
-          else arrayType = arrayTypeCheck( $4, arrayType );
-       } array_formal { newParameter($1, arrayType, PASS_BY_REFERENCE, func); };
-opt_const_expr : /* Empty */ { $$ = (Const) { typeVoid, {0} }; } | const_expr { $$ = $1; } ;
+          {
+             if ( equalType($4.type, typeVoid) )
+                arrayType = typeIArray(arrayType);
+             else
+                arrayType = arrayTypeCheck( $4, arrayType );
+          }
+          array_formal
+          { newParameter($1, arrayType, PASS_BY_REFERENCE, func); };
+opt_const_expr : /* Empty */ { $$ = (Const) { typeVoid, {0} }; }
+               | const_expr  { $$ = $1; } ;
 array_formal : /* Empty */
              | '[' const_expr ']'
                { arrayType = arrayTypeCheck( $2, arrayType); } array_formal ;
@@ -230,17 +264,17 @@ routine : routine_header ';' { forwardFunction(func); closeScope(); }
 
 program_header : "PROGRAM" T_id '(' ')'
                {
-                  func =  newFunction$2;
+                  func =  newFunction($2);
                   endFunctionHeader(func, typeVoid);
                   genQuad(UNIT, Var(func), EMT, EMT);
                };
 
 program : program_header
          {
-#ifdef DEBUG_SYMBOL
-            printf("-------- MAIN PROGRAM ----------\n");
-            printSymbolTable();
-#endif
+            #ifdef DEBUG_SYMBOL
+               printf("-------- MAIN PROGRAM ----------\n");
+               printSymbolTable();
+            #endif
          }
             block
          { 
@@ -256,19 +290,19 @@ type : "int"  { $$ = typeInteger; }
 const_expr : T_int_const        { $$.type = typeInteger; $$.value.vInteger = $1; }
            | T_float_const      { $$.type = typeReal; $$.value.vReal = $1; }
            | T_char_const       { $$.type = typeChar; $$.value.vChar = $1; }
-           | T_string_literal   { $$.type = typeArray(strlen$1, typeChar); $$.value.vString = $1; }
+           | T_string_literal   { $$.type = typeArray(strlen($1), typeChar); $$.value.vString = $1; }
            | "true"             { $$.type = typeBoolean; $$.value.vBoolean = true; }
            | "false"            { $$.type = typeBoolean; $$.value.vBoolean = false; }
            | '(' const_expr ')' { $$ = $2; }
            | T_id
-             { p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
+             {
+               p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
                if (p->entryType != ENTRY_CONSTANT) {
                   error("identifier '%s' is not a constant", $1);
                   $$.type = typeVoid;
                } else
                   $$ = p->u.eConstant;
              }
-               
            | '+' const_expr %prec UNOP  { $$ = applyUnop('+', $2); }
            | '-' const_expr %prec UNOP  { $$ = applyUnop('-', $2); }
            | '!' const_expr %prec UNOP  { $$ = applyUnop('!', $2); }
@@ -290,7 +324,7 @@ const_expr : T_int_const        { $$.type = typeInteger; $$.value.vInteger = $1;
 expr : T_int_const         { $$.t = typeInteger; $$.Place = newConstant(newConstName(), typeInteger, $1); }
      | T_float_const       { $$.t = typeReal;    $$.Place = newConstant(newConstName(), typeReal,    $1); }
      | T_char_const        { $$.t = typeChar;    $$.Place = newConstant(newConstName(), typeChar,    $1); }
-     | T_string_literal    { $$.t = typeArray(strlen($1), typeChar); $$.Place = newConstant(newConstName(), typeArray(strlen($1), typeChar), $1); }
+     | T_string_literal    { $$.t = typeArray(strlen($1), typeChar); $$.Place = newConstant(newConstName(), $$.t, $1); }
      | "true"
       {
          $$.t = typeBoolean;
@@ -305,7 +339,7 @@ expr : T_int_const         { $$.t = typeInteger; $$.Place = newConstant(newConst
          $$.False = makeList(nextQuad());
          genQuad(JUMP, EMT, EMT, EMT);
       }
-     | '(' expr ')'        { $$ = $2; } /* { $$.t = ($2; $$.Place = $2.Place; } */
+     | '(' expr ')'        { $$ = $2; }
      | l_value
        {
           $$.t = $1.type;
@@ -372,8 +406,7 @@ l_value : T_id
             else
                error("identifier \"%s\" is not a variable/constant", $1);
 
-            SymbolEntry *c = newConstant(newConstName(), typeInteger, 0);
-            $$.addr = c;
+            $$.addr = ZERO;
             $$.array = p;
             $$.type = t;
           }
@@ -394,6 +427,7 @@ l_value : T_id
           }
         ;
 
+     /* TODO: Continue Code clean up from here */
 call : T_id '(' 
          {
             p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
@@ -401,9 +435,9 @@ call : T_id '('
                error("object \"%s\" is not callable", $1);
             Func = pushSymEntry(Func, p);
             Param = pushSymEntry(Param, p->u.eFunction.firstArgument);
-#ifdef DEBUG_SYMBOL
-            warning("Pushing param pointer %d for function \"%s\"", Param->p, p->id);
-#endif
+            #ifdef DEBUG_SYMBOL
+               warning("Pushing param pointer %d for function \"%s\"", Param->p, p->id);
+            #endif
          }
       opt_call ')'
          {
@@ -680,7 +714,7 @@ stmt : ';' { $$.Next = NULL; }
          {
             if (writeType % 2 == 1) { // Should print a new line
                genQuad(PAR, Var(NEWLINE), Mode(PASS_BY_VALUE), EMT);
-               genQuad(PAR, Var(ONE),     Mode(PASS_BY_VALUE), EMT);
+               genQuad(PAR, Cnst(1),      Mode(PASS_BY_VALUE), EMT);
                genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
             }
          } ';'

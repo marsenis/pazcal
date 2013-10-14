@@ -1,0 +1,33 @@
+// Only consts in public variable initialization
+const int x = 10;
+int y = 2*x;
+
+// This should not be valid (I think) according to the
+// specification of the language
+int pinakas['a'];
+
+// Mutual Recursion
+PROC mut1(int a);
+PROC mut2(int b);
+
+PROC mut1(int a) {
+   mut2(a);
+   return;
+}
+
+PROC mut2(int b) {
+   mut1(b);
+   return;
+}
+
+//Recursion
+FUNC int gcd(int a, int b) {
+   if (b == 0) return a;
+   if (a < b) return gcd(b, a);
+   else return gcd(b, a % b);
+}
+
+PROGRAM help() {
+   int z = 100;
+   int x = ROUND(3.14);
+}

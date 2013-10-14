@@ -190,6 +190,7 @@ const char* show(char op) {
    }
    return "undefined";
 }
+
 Type generalType(Type t1, Type t2) {
    if (equalType(t1, typeReal) || equalType(t2, typeReal)) return typeReal;
    else if (equalType(t1, typeInteger) || equalType(t2, typeInteger)) return typeInteger;
@@ -207,7 +208,6 @@ Type compatibleOperants(char op, Type t1) {
          if (!equalType(t1, typeInteger) && !equalType(t1, typeChar))
             error("incompatible types of operants in operation '%s'", show(op));
          return typeInteger; // Page 10, line 16
-         //return t1;
       case '<': case '>': case ',': case '.': case '=': case '!':
          if (!arithmeticType(t1))
             error("incompatible types of operants in operation '%s'", show(op));
@@ -228,8 +228,8 @@ Type compatibleOperants(char op, Type t1) {
  * because each one of them can be casted to any other
  * inside an expression.
  * ATTENTION: not to be confused with compatible types for assignment
- * defined on page 11, line 15 for which the function assignmentCompatibleTypes
- * is the appropriate one
+ * defined on page 11, line 15 for which the function
+ * assignmentCompatibleTypes is the appropriate one
  */
 bool compatibleTypes(Type t1, Type t2) {
    return
@@ -261,7 +261,7 @@ Const applyUnop(char op, Const c1) {
    switch (op) {
       case '+':
          if (!arithmeticType(c1.type))
-            error("incompatible type in unary operator '+'");
+            error("non arithmetic-type operant after unary '+'");
          return c1;
       case '-':
          if (equalType(c1.type, typeInteger))
@@ -271,11 +271,11 @@ Const applyUnop(char op, Const c1) {
          else if (equalType(c1.type, typeReal))
             return (Const) { typeReal, { (RepReal) (- c1.value.vReal) } };
          else
-            error("incompatible type in unary operator '-'");
+            error("non arithmetic-type operant after unary '-'");
          break;
       case '!':
          if (!equalType(c1.type, typeBoolean))
-            error("incompatible type in unary operator 'not'");
+            error("non boolean-type operant after unary not/'!'");
          return (Const) { typeBoolean, { (RepBoolean) (! c1.value.vBoolean) } };
    }
 
@@ -343,7 +343,7 @@ Const applyOperation(char op, Const c1, Const c2) {
 
 }
 
-void addConstant(char *name, Type t, Const c) {
+SymbolEntry* addConstant(char *name, Type t, Const c) {
    Const cp;
 
    if (!assignmentCompatibleTypes(t, c.type))
@@ -352,22 +352,23 @@ void addConstant(char *name, Type t, Const c) {
       cp = promote(c, t);
 
    if (equalType(t, typeBoolean))
-       newConstant(name, t, cp.value.vBoolean);
+       return newConstant(name, t, cp.value.vBoolean);
    else if (equalType(t, typeInteger))
-       newConstant(name, t, cp.value.vInteger);
+       return newConstant(name, t, cp.value.vInteger);
    else if (equalType(t, typeChar))
-       newConstant(name, t, cp.value.vChar);
+       return newConstant(name, t, cp.value.vChar);
    else if (equalType(t, typeReal))
-       newConstant(name, t, cp.value.vReal);
+       return newConstant(name, t, cp.value.vReal);
 }
 
 Type unopTypeCheck(char op, Type t) {
    if (op == '+' || op == '-') {
-      if (!equalType(t, typeInteger) && !equalType(t, typeChar) && !equalType(t, typeReal))
-         error("incompatible type in unary \'%c\' operator", op);
+      //if (!equalType(t, typeInteger) && !equalType(t, typeChar) && !equalType(t, typeReal))
+      if (!arithmeticType(t))
+         error("non arithmetic-type operant after unary '%c'", op);
    } else if (op == '!') {
       if (!equalType(t, typeBoolean))
-         error("incompatible type in unary \'%c\' operator", op);
+         error("non boolean-type operant after unary not/'!'");
    } else
       internal("unrecognized operator passed in unopTypeCheck");
    return t;
@@ -392,6 +393,8 @@ Type exprTypeCheck(char op, Type t1, Type t2) {
 }
 
 Type arrayTypeCheck(Const c, Type arrayType) {
+   //TODO: maybe keep only the Integer case according
+   //      to the language specification
    if ( equalType( c.type, typeChar) ) {
       if ( c.value.vChar < 0 ) error("negative array size");
       return typeArray( c.value.vChar, arrayType );
@@ -470,7 +473,7 @@ rlvalue genCodeBooleanExpr(rlvalue x, SymbolEntry *p) {
 void genCodeWrite(rlvalue x, bool firstWriteArgument, bool format, int writeType, rlvalue w, rlvalue d) {
    if (!firstWriteArgument && writeType >= 2) { // Should put a space between the arguments printed
       genQuad(PAR, Var(SPACE), Mode(PASS_BY_VALUE), EMT);
-      genQuad(PAR, Var(ONE),   Mode(PASS_BY_VALUE), EMT);
+      genQuad(PAR, Cnst(1),   Mode(PASS_BY_VALUE), EMT);
       genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
    }
 
@@ -488,7 +491,7 @@ void genCodeWrite(rlvalue x, bool firstWriteArgument, bool format, int writeType
    if (format)
       genQuad(PAR, Var(w.Place), Mode(PASS_BY_VALUE), EMT);
    else
-      genQuad(PAR, Var(ONE), Mode(PASS_BY_VALUE), EMT);
+      genQuad(PAR, Cnst(1), Mode(PASS_BY_VALUE), EMT);
 
    if (equalType(x.t, typeInteger))
       genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_INT", LOOKUP_ALL_SCOPES, true)));
@@ -691,7 +694,7 @@ void addLibraryFunctions() {
    closeScope();
    endFunctionHeader(p, typeVoid);
 
-   newConstant("_SPACE", typeChar, ' ');
-   newConstant("_NEWLINE", typeChar, ' ');
-   newConstant("_ONE", typeInteger, 1);
+   newConstant("$SPACE", typeChar, ' ');
+   newConstant("$NEWLINE", typeChar, ' ');
+   newConstant("$ZERO", typeInteger, 0);
 }

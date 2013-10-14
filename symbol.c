@@ -657,7 +657,7 @@ bool equalType (Type type1, Type type2)
 char* newConstName() {
    static int cnt = 0;
    char* tmp = calloc(8, sizeof(char));
-   sprintf(tmp, "_%d", cnt++);
+   sprintf(tmp, "_$%d", cnt++);
    return tmp;
 }
 
