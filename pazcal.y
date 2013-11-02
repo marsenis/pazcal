@@ -15,7 +15,7 @@
    e.g. int a, b; because when the parser recognizes , b
    it won't be able to know it's type
 */
-Type constType, varType, arrayType;
+Type varType, arrayType;
 
 int writeType; // 0 for write, 1 for writeln, etc...
 bool firstWriteArgument;
@@ -164,12 +164,10 @@ module : /* Empty */  | declaration module ;
 
 declaration : const_def | pub_var_def | routine | program ;
 
-const_def : "const" type T_id '=' const_expr
-            { constType = $2; addConstant($3, constType, $5); }
+const_def : "const" type T_id '=' const_expr { addConstant($3, $2, $5); }
             opt_const_def ';' ;
 opt_const_def : /* Empty */
-               | ',' T_id '=' const_expr { addConstant($2, constType, $4); }
-                 opt_const_def ;
+               | opt_const_def ',' T_id '=' const_expr { addConstant($3, $<t>-4, $5); } ;
 
 pub_var_def : type { varType = $1; } pub_var_init pub_opt_var_def ';' ;
 pub_opt_var_def : /* Empty */ | ',' pub_var_init pub_opt_var_def ;
