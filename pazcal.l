@@ -63,8 +63,10 @@ ESCAPESEQ (\\n|\\t|\\r|\\0|\\\\|\\\'|\\\")
                   strcpy(yylval.str, yytext);
                   return T_id; }
 (0|[1-9]{D}*)   { yylval.integer = atoi(yytext);
+                  // TODO: Check for out of bounds constants
                   return T_int_const; }
 {D}+\.{D}+((e|E)(\+|\-)?{D}+)?   { yylval.real = atof(yytext);
+                                   //TODO: Check for out of bounds constants
                                    return T_float_const; }
 
 [\>\<\+\-\*\/\%\!\=\&\;\.\(\)\:\,\[\]\{\}]   { return yytext[0]; }
@@ -108,6 +110,7 @@ ESCAPESEQ (\\n|\\t|\\r|\\0|\\\\|\\\'|\\\")
 %%
 
 char* removeEscaped(char* s) {
+   //TODO: Simplify this function. Maybe use a substitution array
    int i, j;
    char *p;
 
