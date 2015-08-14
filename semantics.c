@@ -5,8 +5,8 @@
 #define EMT ((opts) { EMPTY, 0 })  // Empty Quad
 //#define Var(X) ( (opts) { VAR, (contentType) { .variable = (X) } } )
 
-/* Stacks used for maintaining inheritted attributes
- * in the SDT schemas. Specificaly, the stacks can hold
+/* Stacks used for maintaining inherited attributes
+ * in the SDT schemas. Specifically, the stacks can hold
  * SymbolEntry pointers.
 **/
 Stack pop(Stack S) {
@@ -53,9 +53,9 @@ Stack paramCodeGen(Stack Func, Stack Param, rlvalue expr) {
    if (t == NULL)
       error("Function \"%s\" needs less arguments", f->id);
    else if ( !assignmentCompatibleTypes(t->u.eParameter.type, expr.t)) {
-      error("Type missmatch on the parameters given to the function \"%s\"", f->id);
+      error("Type mismatch on the parameters given to the function \"%s\"", f->id);
 #ifdef DEBUG_SYMBOL
-      printf("Type missmatch ");
+      printf("Type mismatch ");
       printType(t->u.eParameter.type);
       printf(", ");
       printType(expr.t);
@@ -137,9 +137,15 @@ RepTypes applyBoolean(char op, RepBoolean x, RepBoolean y) {
 }
 
 Const promote(Const c, Type t) {
-   Const res;
+   return (Const) { t, c.value };
+
+   // TODO: Find out why the heck my past self did all this
+   //       case checking instead of the above one liner
+   /*
+   Const rest;
 
    res.type = t;
+
    if (equalType(t, typeInteger)) {
 
       if (equalType(c.type, typeInteger))
@@ -170,6 +176,7 @@ Const promote(Const c, Type t) {
       return c;
 
    return res;
+   */
 }
 
 const char* show(char op) {
@@ -253,7 +260,9 @@ bool assignmentCompatibleTypes(Type t1, Type t2) {
 }
 
 bool arithmeticType(Type t) {
-   return equalType(t, typeInteger) || equalType(t, typeChar) || equalType(t, typeReal);
+   return equalType(t, typeInteger)
+       || equalType(t, typeChar)
+       || equalType(t, typeReal);
 }
 
 Const applyUnop(char op, Const c1) {
@@ -293,7 +302,7 @@ Const applyOperation(char op, Const c1, Const c2) {
    printf("\n");
 #endif
 
-   // Type cheking and promotion as nessecary
+   // Type checking and promotion as necessary.
    if (!compatibleTypes(c1.type, c2.type)) {
       error("incompatible types of operants in operation '%s'", show(op));
       return (Const) { typeVoid, {0} };
@@ -351,6 +360,10 @@ SymbolEntry* addConstant(char *name, Type t, Const c) {
    else
       cp = promote(c, t);
 
+   return newConstant(name, t, cp.value);
+
+   //TODO: Another silly segment of code
+   /*
    if (equalType(t, typeBoolean))
        return newConstant(name, t, cp.value.vBoolean);
    else if (equalType(t, typeInteger))
@@ -359,6 +372,7 @@ SymbolEntry* addConstant(char *name, Type t, Const c) {
        return newConstant(name, t, cp.value.vChar);
    else if (equalType(t, typeReal))
        return newConstant(name, t, cp.value.vReal);
+   */
 }
 
 Type unopTypeCheck(char op, Type t) {
@@ -393,17 +407,18 @@ Type exprTypeCheck(char op, Type t1, Type t2) {
 }
 
 Type arrayTypeCheck(Const c, Type arrayType) {
-   //TODO: maybe keep only the Integer case according
-   //      to the language specification
-   if ( equalType( c.type, typeChar) ) {
-      if ( c.value.vChar < 0 ) error("negative array size");
-      return typeArray( c.value.vChar, arrayType );
-   } else if ( equalType( c.type, typeInteger) ) {
-      if ( c.value.vInteger < 0 ) error("negative array size");
+   if ( equalType( c.type, typeInteger) ) {
+      if ( c.value.vInteger <= 0 ) error("non positive array size");
       return typeArray( c.value.vInteger, arrayType );
    }
+#ifdef EXT_POLYMORPHIC_ARRAY_SIZE
+   else if ( equalType( c.type, typeChar) ) {
+      if ( c.value.vChar <= 0 ) error("non positive array size");
+      return typeArray( c.value.vChar, arrayType );
+   }
+#endif
    else
-      error("array size not an integer"); // TODO: better error message for multiple dimensions
+      error("array size not an integer");
    return typeVoid;
 }
 

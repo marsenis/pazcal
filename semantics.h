@@ -6,6 +6,9 @@
 #include "symbol.h"
 #include "intermediateCode.h"
 
+// This extension allows the array size to also be a char constant
+//#define EXT_POLYMORPHIC_ARRAY_SIZE
+
 // TODO: replace those by variables so that you don't have
 //       to perform a lookup each time you need them
 #define SPACE   lookupEntry("$SPACE",   LOOKUP_ALL_SCOPES, true)

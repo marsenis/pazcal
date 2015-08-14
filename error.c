@@ -125,6 +125,10 @@ void error (const char * fmt, ...)
 
    fprintf(stderr, "\n");
    va_end(ap);
+
+   // Every error should be treated as fatal since there
+   // are no error recovery actions implemented.
+   exit(1);
 }
 
 void warning (const char * fmt, ...)

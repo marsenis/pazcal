@@ -167,23 +167,24 @@ declaration : const_def | pub_var_def | routine | program ;
 const_def : "const" type T_id '=' const_expr { addConstant($3, $2, $5); }
             opt_const_def ';' ;
 opt_const_def : /* Empty */
-               | opt_const_def ',' T_id '=' const_expr { addConstant($3, $<t>-4, $5); } ;
+              | opt_const_def ',' T_id '=' const_expr
+                { addConstant($3, $<t>-4, $5); } ;
 
 pub_var_def : type { varType = $1; } pub_var_init pub_opt_var_def ';' ;
 pub_opt_var_def : /* Empty */ | ',' pub_var_init pub_opt_var_def ;
 
 pub_var_init : T_id pub_opt_var_init
-           {
-              SymbolEntry *p = newVariable($1, varType);
-              SymbolEntry *q = addConstant(newConstName(), varType, $2);
-              genQuad(ASG, Var(q), EMT, Var(p));
-            }
-         | T_id '[' { arrayType = varType; }
-           const_expr ']' { arrayType = arrayTypeCheck( $4, arrayType ); }
-           array_var_init { newVariable($1, arrayType); };
+               {
+                  SymbolEntry *p = newVariable($1, varType);
+                  SymbolEntry *q = addConstant(newConstName(), varType, $2);
+                  genQuad(ASG, Var(q), EMT, Var(p));
+               }
+             | T_id '[' { arrayType = varType; } const_expr ']'
+               { arrayType = arrayTypeCheck( $4, arrayType ); }
+               array_var_init { newVariable($1, arrayType); };
 
-pub_opt_var_init : /* Empty */ { $$.type = typeVoid; }
-               | '=' const_expr  { $$ = $2; };
+pub_opt_var_init : /* Empty */ { $$ = (Const) { varType, 0 }; }
+                 | '=' const_expr  { $$ = $2; };
 
 var_def : type { varType = $1; } var_init opt_var_def ';' ;
 opt_var_def : /* Empty */ | ',' var_init opt_var_def ;
@@ -205,12 +206,15 @@ var_init : T_id opt_var_init
                  genQuad(ASG, Var(result.Place), EMT, Var(p));
               }
             }
-         | T_id '[' { arrayType = varType; } 
+         | T_id '['
+           { arrayType = varType;
+             /*TODO: Array types should be created right to left if possible */
+           } 
            const_expr ']' { arrayType = arrayTypeCheck( $4, arrayType ); }
            array_var_init { newVariable($1, arrayType); };
 
 opt_var_init : /* Empty */ { $$.t = typeVoid; }
-               | '=' expr  { $$ = $2; };
+             | '=' expr  { $$ = $2; };
 array_var_init : /* Empty */
                | '[' const_expr ']'
                   { arrayType = arrayTypeCheck( $2, arrayType ); }
@@ -227,7 +231,7 @@ routine_header : proc_func T_id
                  '(' opt_args ')'
                  { endFunctionHeader(func, $1);
                    #ifdef DEBUG_SYMBOL
-                     printf("Begining function body:\n"); printSymbolTable();
+                     printf("Beginning function body:\n"); printSymbolTable();
                    #endif
                  } ;
 proc_func : "PROC" { $$ = typeVoid; } | "FUNC" type { $$ = $2; };
@@ -250,7 +254,7 @@ opt_const_expr : /* Empty */ { $$ = (Const) { typeVoid, {0} }; }
                | const_expr  { $$ = $1; } ;
 array_formal : /* Empty */
              | '[' const_expr ']'
-               { arrayType = arrayTypeCheck( $2, arrayType); } array_formal ;
+               { arrayType = arrayTypeCheck( $2, arrayType ); } array_formal ;
 
 routine : routine_header ';' { forwardFunction(func); closeScope(); }
         | routine_header block
@@ -434,7 +438,7 @@ call : T_id '('
             Func = pushSymEntry(Func, p);
             Param = pushSymEntry(Param, p->u.eFunction.firstArgument);
             #ifdef DEBUG_SYMBOL
-               warning("Pushing param pointer %d for function \"%s\"", Param->p, p->id);
+               //warning("Pushing param pointer %d for function \"%s\"", Param->p, p->id);
             #endif
          }
       opt_call ')'

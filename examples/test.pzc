@@ -1,4 +1,6 @@
-const int x = 1, y = 2, z = 3;
+const int x = ' ', y = 2, z = 3;
+const char a = 'a', b = 'b', c = 'c';
+char pin = 98;
 
 PROGRAM hello() {
    int k = x + y + z;
