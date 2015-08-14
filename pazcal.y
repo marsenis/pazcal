@@ -183,7 +183,7 @@ pub_var_init : T_id pub_opt_var_init
                { arrayType = arrayTypeCheck( $4, arrayType ); }
                array_var_init { newVariable($1, arrayType); };
 
-pub_opt_var_init : /* Empty */ { $$ = (Const) { varType, 0 }; }
+pub_opt_var_init : /* Empty */ { $$ = (Const) { varType, {0} }; }
                  | '=' const_expr  { $$ = $2; };
 
 var_def : type { varType = $1; } var_init opt_var_def ';' ;
@@ -242,14 +242,14 @@ more_args : /* Empty */  | ',' parameter more_args ;
 formal : T_id     { newParameter($1, varType, PASS_BY_VALUE, func); }
        | '&' T_id { newParameter($2, varType, PASS_BY_REFERENCE, func); }
        | T_id '[' { arrayType = varType; } opt_const_expr ']' 
-          {
-             if ( equalType($4.type, typeVoid) )
-                arrayType = typeIArray(arrayType);
-             else
-                arrayType = arrayTypeCheck( $4, arrayType );
-          }
-          array_formal
-          { newParameter($1, arrayType, PASS_BY_REFERENCE, func); };
+         {
+            if ( equalType($4.type, typeVoid) )
+               arrayType = typeIArray(arrayType);
+            else
+               arrayType = arrayTypeCheck( $4, arrayType );
+         }
+         array_formal
+         { newParameter($1, arrayType, PASS_BY_REFERENCE, func); };
 opt_const_expr : /* Empty */ { $$ = (Const) { typeVoid, {0} }; }
                | const_expr  { $$ = $1; } ;
 array_formal : /* Empty */
@@ -265,43 +265,43 @@ routine : routine_header ';' { forwardFunction(func); closeScope(); }
           } ;
 
 program_header : "PROGRAM" T_id '(' ')'
-               {
-                  func =  newFunction($2);
-                  endFunctionHeader(func, typeVoid);
-                  genQuad(UNIT, Var(func), EMT, EMT);
-               };
+                 {
+                    func = newFunction($2);
+                    endFunctionHeader(func, typeVoid);
+                    genQuad(UNIT, Var(func), EMT, EMT);
+                 };
 
 program : program_header
-         {
-            #ifdef DEBUG_SYMBOL
-               printf("-------- MAIN PROGRAM ----------\n");
-               printSymbolTable();
-            #endif
-         }
-            block
-         { 
-            backpatch($3.Next, nextQuad());
-            genQuad(ENDU, Var(func), EMT, EMT);
-         };
+          {
+             #ifdef DEBUG_SYMBOL
+                printf("-------- MAIN PROGRAM ----------\n");
+                printSymbolTable();
+             #endif
+          }
+             block
+          { 
+             backpatch($3.Next, nextQuad());
+             genQuad(ENDU, Var(func), EMT, EMT);
+          };
 
 type : "int"  { $$ = typeInteger; }
      | "bool" { $$ = typeBoolean; }
      | "char" { $$ = typeChar; }
      | "REAL" { $$ = typeReal; } ;
 
-const_expr : T_int_const        { $$.type = typeInteger; $$.value.vInteger = $1; }
-           | T_float_const      { $$.type = typeReal; $$.value.vReal = $1; }
-           | T_char_const       { $$.type = typeChar; $$.value.vChar = $1; }
-           | T_string_literal   { $$.type = typeArray(strlen($1), typeChar); $$.value.vString = $1; }
-           | "true"             { $$.type = typeBoolean; $$.value.vBoolean = true; }
-           | "false"            { $$.type = typeBoolean; $$.value.vBoolean = false; }
+const_expr : T_int_const        { $$ = (Const) { typeInteger, {.vInteger=$1} }; }
+           | T_float_const      { $$ = (Const) { typeReal, {.vReal=$1} }; }
+           | T_char_const       { $$ = (Const) { typeChar, {.vChar=$1} }; }
+           | T_string_literal   { $$ = (Const) { typeArray(strlen($1), typeChar), {.vString=$1} }; }
+           | "true"             { $$ = (Const) { typeBoolean, {.vBoolean=true} }; }
+           | "false"            { $$ = (Const) { typeBoolean, {.vBoolean=false} }; }
            | '(' const_expr ')' { $$ = $2; }
            | T_id
              {
                p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
                if (p->entryType != ENTRY_CONSTANT) {
                   error("identifier '%s' is not a constant", $1);
-                  $$.type = typeVoid;
+                  $$.type = typeVoid; // Used as a recovery strategy.
                } else
                   $$ = p->u.eConstant;
              }

@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g
+CFLAGS=-g -Wall
 
 pazcal: pazcal.lex.o pazcal.tab.o error.o general.o symbol.o symbolDebug.o semantics.o intermediateCode.o
 		$(CC) $(CFLAGS) -o pazcal $+ -lfl

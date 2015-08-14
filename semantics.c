@@ -2,9 +2,6 @@
 #include "general.h"
 #include "semantics.h"
 
-#define EMT ((opts) { EMPTY, 0 })  // Empty Quad
-//#define Var(X) ( (opts) { VAR, (contentType) { .variable = (X) } } )
-
 /* Stacks used for maintaining inherited attributes
  * in the SDT schemas. Specifically, the stacks can hold
  * SymbolEntry pointers.
@@ -209,24 +206,23 @@ Type compatibleOperants(char op, Type t1) {
    switch(op) {
       case '&': case '|':
          if (!equalType(t1, typeBoolean))
-            error("incompatible types of operants in operation '%s'", show(op));
+            error("operation '%s' not defined for this type of data", show(op));
          return t1;
       case '%':
          if (!equalType(t1, typeInteger) && !equalType(t1, typeChar))
-            error("incompatible types of operants in operation '%s'", show(op));
+            error("operation '%s' not defined for this type of data", show(op));
          return typeInteger; // Page 10, line 16
       case '<': case '>': case ',': case '.': case '=': case '!':
          if (!arithmeticType(t1))
-            error("incompatible types of operants in operation '%s'", show(op));
+            error("operation '%s' not defined for this type of data", show(op));
          return typeBoolean;
       // +, -, *, /
       default:
          if (!arithmeticType(t1))
-            error("incompatible types of operants in operation '%s'", show(op));
+            error("operation '%s' not defined for this type of data", show(op));
          // Page 10, line 14
          if (equalType(t1, typeReal)) return typeReal;
          else return typeInteger;
-         //return t1;
    }
    return typeVoid;
 }
@@ -304,8 +300,8 @@ Const applyOperation(char op, Const c1, Const c2) {
 
    // Type checking and promotion as necessary.
    if (!compatibleTypes(c1.type, c2.type)) {
-      error("incompatible types of operants in operation '%s'", show(op));
-      return (Const) { typeVoid, {0} };
+      error("incompatible types of operands to operator '%s'", show(op));
+      return (Const) { typeVoid, {0} }; // attempt to recover
    } else if (equalType(c1.type, c2.type)) {
       cp1 = c1;
       cp2 = c2;
@@ -322,8 +318,8 @@ Const applyOperation(char op, Const c1, Const c2) {
 
    result.type = compatibleOperants(op, cp1.type);
    if ( equalType(result.type, typeVoid) ) {
-      error("incompatible types of operants in operation '%s'", show(op));
-      return (Const) { typeVoid, {0} };
+      error("operation '%s' not defined for this type of data", show(op));
+      return (Const) { typeVoid, {0} }; // attempt to recover
    }
 
 #ifdef DEBUG_SYMBOL
@@ -333,6 +329,7 @@ Const applyOperation(char op, Const c1, Const c2) {
       warning("handling boolean constants %c and %c", cp1.value.vBoolean ? 't' : 'f', cp2.value.vBoolean ? 't' : 'f');
 #endif
 
+   //TODO: Maybe use genType instead of cp1.type
    if ( equalType(cp1.type, typeInteger) )
       result.value = applyInteger(op, cp1.value.vInteger, cp2.value.vInteger);
    else if ( equalType(cp1.type, typeChar) )

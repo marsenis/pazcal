@@ -5,7 +5,7 @@
 
 #define MAX 10000
 
-#define EMT ((opts) { EMPTY, 0 })  // Empty Quad
+#define EMT ((opts) { EMPTY, {0} })  // Empty Quad
 #define Var(X)  ( (opts) { VAR  , (contentType) { .variable = (X) } } )
 #define Cnst(X) ( (opts) { CONST, (contentType) { .constant = (X) } } )
 #define Mode(X) ( (opts) { PASS,  (contentType) { .mode = (X) } } )
