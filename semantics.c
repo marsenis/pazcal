@@ -709,4 +709,6 @@ void addLibraryFunctions() {
    newConstant("$SPACE", typeChar, ' ');
    newConstant("$NEWLINE", typeChar, ' ');
    newConstant("$ZERO", typeInteger, 0);
+   newConstant("$TRUE", typeBoolean, true);
+   newConstant("$FALSE", typeBoolean, false);
 }

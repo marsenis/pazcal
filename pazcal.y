@@ -328,19 +328,17 @@ expr : T_int_const         { $$.t = typeInteger; $$.Place = newConstant(newConst
      | T_char_const        { $$.t = typeChar;    $$.Place = newConstant(newConstName(), typeChar,    $1); }
      | T_string_literal    { $$.t = typeArray(strlen($1), typeChar); $$.Place = newConstant(newConstName(), $$.t, $1); }
      | "true"
-      {
-         $$.t = typeBoolean;
-         $$.Place = newConstant(newConstName(), typeBoolean,  true);
-         $$.True = makeList(nextQuad());
-         genQuad(JUMP, EMT, EMT, EMT);
-      }
+       {
+          $$ = (rlvalue) { TRUE, typeBoolean };
+          $$.True = makeList(nextQuad());
+          genQuad(JUMP, EMT, EMT, EMT);
+       }
      | "false"
-      {
-         $$.t = typeBoolean;
-         $$.Place = newConstant(newConstName(), typeBoolean,  false);
-         $$.False = makeList(nextQuad());
-         genQuad(JUMP, EMT, EMT, EMT);
-      }
+       {
+          $$ = (rlvalue) { FALSE, typeBoolean };
+          $$.False = makeList(nextQuad());
+          genQuad(JUMP, EMT, EMT, EMT);
+       }
      | '(' expr ')'        { $$ = $2; }
      | l_value
        {
@@ -408,9 +406,7 @@ l_value : T_id
             else
                error("identifier \"%s\" is not a variable/constant", $1);
 
-            $$.addr = ZERO;
-            $$.array = p;
-            $$.type = t;
+            $$ = (lvalue) { ZERO, p, t };
           }
         | l_value '[' expr ']'
           {

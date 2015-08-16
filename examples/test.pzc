@@ -1,7 +1,8 @@
 const int x = ' ', y = 2, z = 3;
 const char a = 'a', b = 'b', c = 'c';
-char pin = 98;
+char pin[10][20][30];
 
 PROGRAM hello() {
-   int k = x + y + z;
+   bool test = true;
+   int k = pin[1][2][3];
 }

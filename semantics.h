@@ -14,6 +14,8 @@
 #define SPACE   lookupEntry("$SPACE",   LOOKUP_ALL_SCOPES, true)
 #define NEWLINE lookupEntry("$NEWLINE", LOOKUP_ALL_SCOPES, true)
 #define ZERO    lookupEntry("$ZERO",    LOOKUP_ALL_SCOPES, true)
+#define TRUE    lookupEntry("$TRUE",    LOOKUP_ALL_SCOPES, true)
+#define FALSE   lookupEntry("$FALSE",   LOOKUP_ALL_SCOPES, true)
 
 // Stacks used for inheritted atributes in SDT shemas.
 enum StackType { SYM_ENTRY, NEXT_LIST };
