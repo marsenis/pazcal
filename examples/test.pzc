@@ -4,5 +4,12 @@ char pin[10][20][30];
 
 PROGRAM hello() {
    bool test = true;
-   int k = pin[1][2][3];
+   int k = pin[1][2][3], i;
+
+   FOR (i, 1 TO 10) {
+      k = i + 1;
+      if (k > 0) i++;
+   }
+
+   WRITELN("Hello");
 }

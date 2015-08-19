@@ -15,7 +15,7 @@
    e.g. int a, b; because when the parser recognizes , b
    it won't be able to know it's type
 */
-Type varType, arrayType;
+Type varType;
 
 int writeType; // 0 for write, 1 for writeln, etc...
 bool firstWriteArgument;
@@ -108,6 +108,8 @@ bool insideRoutine = false; // Used for generating intermediate code
 %type<cnst>          const_expr
 %type<cnst>          opt_const_expr
 %type<RLvalue>       opt_var_init
+%type<t>             array_var_init 
+%type<t>             array_formal 
 %type<cnst>          pub_opt_var_init
 %type<RLvalue>       expr
 %type<Lvalue>        l_value;
@@ -179,9 +181,8 @@ pub_var_init : T_id pub_opt_var_init
                   SymbolEntry *q = addConstant(newConstName(), varType, $2);
                   genQuad(ASG, Var(q), EMT, Var(p));
                }
-             | T_id '[' { arrayType = varType; } const_expr ']'
-               { arrayType = arrayTypeCheck( $4, arrayType ); }
-               array_var_init { newVariable($1, arrayType); };
+             | T_id '[' const_expr ']' array_var_init
+               { newVariable($1, arrayTypeCheck($3, $5)); };
 
 pub_opt_var_init : /* Empty */ { $$ = (Const) { varType, {0} }; }
                  | '=' const_expr  { $$ = $2; };
@@ -206,19 +207,14 @@ var_init : T_id opt_var_init
                  genQuad(ASG, Var(result.Place), EMT, Var(p));
               }
             }
-         | T_id '['
-           { arrayType = varType;
-             /*TODO: Array types should be created right to left if possible */
-           } 
-           const_expr ']' { arrayType = arrayTypeCheck( $4, arrayType ); }
-           array_var_init { newVariable($1, arrayType); };
+         | T_id '[' const_expr ']' array_var_init
+           { newVariable($1, arrayTypeCheck($3, $5)); };
 
 opt_var_init : /* Empty */ { $$.t = typeVoid; }
              | '=' expr  { $$ = $2; };
-array_var_init : /* Empty */
-               | '[' const_expr ']'
-                  { arrayType = arrayTypeCheck( $2, arrayType ); }
-                  array_var_init ;
+array_var_init : /* Empty */ { $$ = varType; }
+               | '[' const_expr ']' array_var_init
+                  { $$ = arrayTypeCheck($2, $4); } ;
 
 routine_header : proc_func T_id
                  /* TODO: somehow many statements of the form
@@ -241,20 +237,22 @@ more_args : /* Empty */  | ',' parameter more_args ;
 
 formal : T_id     { newParameter($1, varType, PASS_BY_VALUE, func); }
        | '&' T_id { newParameter($2, varType, PASS_BY_REFERENCE, func); }
-       | T_id '[' { arrayType = varType; } opt_const_expr ']' 
+       | T_id '[' opt_const_expr ']' array_formal
          {
-            if ( equalType($4.type, typeVoid) )
-               arrayType = typeIArray(arrayType);
+            Type arrayType;
+
+            if ( equalType($3.type, typeVoid) )
+               arrayType = typeIArray($5);
             else
-               arrayType = arrayTypeCheck( $4, arrayType );
-         }
-         array_formal
-         { newParameter($1, arrayType, PASS_BY_REFERENCE, func); };
+               arrayType = arrayTypeCheck($3, $5);
+
+            newParameter($1, arrayType, PASS_BY_REFERENCE, func);
+         };
 opt_const_expr : /* Empty */ { $$ = (Const) { typeVoid, {0} }; }
                | const_expr  { $$ = $1; } ;
-array_formal : /* Empty */
-             | '[' const_expr ']'
-               { arrayType = arrayTypeCheck( $2, arrayType ); } array_formal ;
+array_formal : /* Empty */ { $$ = varType; }
+             | '[' const_expr ']' array_formal
+               { $$ = arrayTypeCheck($2, $4); } ;
 
 routine : routine_header ';' { forwardFunction(func); closeScope(); }
         | routine_header block
@@ -425,43 +423,42 @@ l_value : T_id
           }
         ;
 
-     /* TODO: Continue Code clean up from here */
 call : T_id '(' 
-         {
-            p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
-            if (p->entryType != ENTRY_FUNCTION)
-               error("object \"%s\" is not callable", $1);
-            Func = pushSymEntry(Func, p);
-            Param = pushSymEntry(Param, p->u.eFunction.firstArgument);
-            #ifdef DEBUG_SYMBOL
-               //warning("Pushing param pointer %d for function \"%s\"", Param->p, p->id);
-            #endif
-         }
-      opt_call ')'
-         {
-            if ( top(Param) != NULL )
-               error("Function \"%s\" needs more arguments", ((SymbolEntry *) top(Func))->id);
+       {
+          p = lookupEntry($1, LOOKUP_ALL_SCOPES, true);
+          if (p->entryType != ENTRY_FUNCTION)
+             error("object \"%s\" is not callable", $1);
+          Func = pushSymEntry(Func, p);
+          Param = pushSymEntry(Param, p->u.eFunction.firstArgument);
+          #ifdef DEBUG_SYMBOL
+             //warning("Pushing param pointer %d for function \"%s\"", Param->p, p->id);
+          #endif
+       }
+       opt_call ')'
+       {
+          if ( top(Param) != NULL )
+             error("function \"%s\" needs more arguments", ((SymbolEntry *) top(Func))->id);
 
-            $$.t = ((SymbolEntry *) top(Func))->u.eFunction.resultType;
-            if (!equalType($$.t, typeVoid)) {
-               SymbolEntry *t = newTemporary($$.t);
-               $$.Place = t;
+          $$.t = ((SymbolEntry *) top(Func))->u.eFunction.resultType;
+          if (!equalType($$.t, typeVoid)) {
+             SymbolEntry *t = newTemporary($$.t);
+             $$.Place = t;
 
-               genQuad(PAR, Var(t), Mode(PASS_RET), EMT);
+             genQuad(PAR, Var(t), Mode(PASS_RET), EMT);
 
-            }
-            genQuad(CALL, EMT, EMT, Var((SymbolEntry *) top(Func)));
+          }
+          genQuad(CALL, EMT, EMT, Var((SymbolEntry *) top(Func)));
 
-            if (equalType($$.t, typeBoolean)) {
-               $$.True = makeList(nextQuad());
-               genQuad(IFB, Var($$.Place), EMT, EMT);
-               $$.False = makeList(nextQuad());
-               genQuad(JUMP, EMT, EMT, EMT);
-            }
+          if (equalType($$.t, typeBoolean)) {
+             $$.True = makeList(nextQuad());
+             genQuad(IFB, Var($$.Place), EMT, EMT);
+             $$.False = makeList(nextQuad());
+             genQuad(JUMP, EMT, EMT, EMT);
+          }
 
-            Func = pop(Func);
-            Param = pop(Param);
-         };
+          Func = pop(Func);
+          Param = pop(Param);
+       };
 
 opt_call      : /* Empty */
               | expr { Param = paramCodeGen(Func, Param, $1); } more_opt_call ;
@@ -469,23 +466,18 @@ more_opt_call : /* Empty */
               | ',' expr { Param = paramCodeGen(Func, Param, $2); } more_opt_call ;
 
 block : '{'
-         {
+        {
            openScope();
            if (insideRoutine)
               genQuad(UNIT, Var(func), EMT, EMT);
-            insideRoutine = false;
-         }
-         opt_block '}'
-         {
-            $$ = $3;
-            closeScope();
-         } ;
-opt_block : /* Empty */
-          {
-             /* Use .t to signify the end of a block */
-             $$.t = NULL;
-             $$.Next = NULL;
-          }
+           insideRoutine = false;
+        }
+        opt_block '}'
+        {
+           $$ = $3;
+           closeScope();
+        } ;
+opt_block : /* Empty */ { $$ = (rlvalue) { .t = NULL }; }
           | local_def opt_block { $$ = $2; }
           | stmt M opt_block
             {
@@ -501,135 +493,152 @@ opt_block : /* Empty */
 
 local_def : const_def | var_def ;
 
-stmt : ';' { $$.Next = NULL; }
-      | l_value assign expr ';'
-         {
-            if (!assignmentCompatibleTypes($1.type, $3.t)) { error("type mismatch on assignment"); printMismatch($1.type, $3.t); }
-            if ($2 != '=' && !arithmeticType($1.type)) error("this assignment operator only works on arithmetic types");
+stmt : ';'
+       {  // Jump to the next position. Used as NOP (NO Operation).
+          // It is needed in the case of "if (..) ;" where there should
+          // be a (vacuous) quadruplet to jump to.
+          genQuad(JUMP, EMT, EMT, Cnst(nextQuad()+1));
+          $$.Next = NULL;
+       }
+     | l_value assign expr ';'
+       {
+          if (!assignmentCompatibleTypes($1.type, $3.t)) {
+             error("type mismatch on assignment");
+             printMismatch($1.type, $3.t);
+          }
+          if ($2 != '=' && !arithmeticType($1.type))
+             error("this assignment operator only works on arithmetic types");
 
-            p = findLvaluePlace($1);
+          p = findLvaluePlace($1);
 
-            if (equalType($3.t, typeBoolean))
-               $$ = genCodeBooleanExpr($3, p);
-            else {
-               if ($2 != '=')
-                  genQuad($2, Var(p), Var($3.Place), Var(p));
-               else
-                  genQuad(ASG, Var($3.Place), EMT, Var(p));
-            }
-         }
-      | l_value pm ';'
-      {
-         if (!arithmeticType($1.type))
-            error("increment/decrement operators work only on arithmetic types");
-         p = findLvaluePlace($1);
-         genQuad($2, Var(p), Cnst(1), Var(p));
+          if (equalType($3.t, typeBoolean))
+             $$ = genCodeBooleanExpr($3, p);
+          else {
+             if ($2 != '=')
+                genQuad($2, Var(p), Var($3.Place), Var(p));
+             else
+                genQuad(ASG, Var($3.Place), EMT, Var(p));
 
-         $$.Next = NULL;
-      }
-      | call ';' { if (!equalType($1.t, typeVoid)) warning("ignoring function result"); }
-      | "if" '(' expr ')' M stmt
-         {
-            if (!equalType($3.t, typeBoolean))
-               error("condition of the 'if' statement is not a boolean");
+             $$.Next = NULL;
+          }
+       }
+     | l_value pm ';'
+       {
+          if (!arithmeticType($1.type))
+             error("increment/decrement operators work only on arithmetic types");
+          p = findLvaluePlace($1);
+          genQuad($2, Var(p), Cnst(1), Var(p));
 
-            backpatch($3.True, $5);
-            $$.Next = mergeLists($3.False, $6.Next);
-         }
-      | "if" '(' expr ')' M stmt N "else" M stmt
-         {
-            if (!equalType($3.t, typeBoolean))
-               error("condition of the 'if-else' statement is not a boolean");
+          $$.Next = NULL;
+       }
+     | call ';'
+       {
+          if (!equalType($1.t, typeVoid))
+             warning("ignoring function result");
+          $$.Next = NULL;
+       }
+     | "if" '(' expr ')' M stmt
+       {
+          if (!equalType($3.t, typeBoolean))
+             error("condition expression in 'if' statement is not boolean");
 
-            backpatch($3.True, $5);
-            backpatch($3.False, $9);
-            labelListType *tmp = mergeLists($6.Next, $10.Next);
-            $$.Next = mergeLists(tmp, $7.Next);
-         }
-      | "while" M '(' expr ')' M
-         {
-            PUSH_LOOP;
-            if (!equalType($4.t, typeBoolean))
-               error("condition of the 'while' statement is not a boolean");
+          backpatch($3.True, $5);
+          $$.Next = mergeLists($3.False, $6.Next);
+       }
+     | "if" '(' expr ')' M stmt "else" N M stmt
+       {
+          if (!equalType($3.t, typeBoolean))
+             error("condition of the 'if-else' statement is not a boolean");
 
-            Breaks = pushList(Breaks, (labelListType *) NULL);
-            //Continues = pushLabel(Continues, $2);
-            Continues = pushList(Continues, (labelListType *) NULL);
-         }
-         stmt
-         {
-            POP_LOOP;
+          backpatch($3.True, $5);
+          backpatch($3.False, $9);
+          labelListType *tmp = mergeLists($6.Next, $10.Next);
+          $$.Next = mergeLists(tmp, $8.Next);
+       }
+     | "while" M '(' expr ')' M
+       {
+          PUSH_LOOP;
+          if (!equalType($4.t, typeBoolean))
+             error("conditional in 'while' statement is not a boolean");
 
-            backpatch($4.True, $6);
-            backpatch($8.Next, $2);
-            $$.Next = $4.False;
-            genQuad(JUMP, EMT, EMT, (opts) { LBL, (contentType) { .label = $2 } });
+          Breaks = pushList(Breaks, (labelListType *) NULL);
+          //Continues = pushLabel(Continues, $2);
+          Continues = pushList(Continues, (labelListType *) NULL);
+       }
+       stmt
+       {
+          POP_LOOP;
 
-            $$.Next = mergeLists($$.Next, (labelListType *) top(Breaks));
-            Breaks = pop(Breaks);
+          backpatch($4.True, $6);
+          backpatch($8.Next, $2);
+          $$.Next = $4.False;
+          genQuad(JUMP, EMT, EMT, Lbl($2));
 
-            backpatch((labelListType *) top(Continues), $2);
-            Continues = pop(Continues);
-         }
-      | "FOR" '(' T_id ','
-         {
-            p = lookupEntry($3, LOOKUP_ALL_SCOPES, true);
-            if (p->entryType == ENTRY_FUNCTION) error("identifier not a variable");
-            else if ( !( (p->entryType == ENTRY_CONSTANT && equalType(p->u.eConstant.type, typeInteger) )
-                   || (p->entryType == ENTRY_VARIABLE && equalType(p->u.eVariable.type, typeInteger) )
-                   || (p->entryType == ENTRY_PARAMETER && equalType(p->u.eParameter.type, typeInteger) ) ) )
-               error("control variable in FOR statement is not an integer");
+          $$.Next = mergeLists($$.Next, (labelListType *) top(Breaks));
+          Breaks = pop(Breaks);
 
-            Breaks = pushList(Breaks, (labelListType *) NULL);
-            Continues = pushList(Continues, (labelListType *) NULL);
-         }
-         range ')'
-         {
-            PUSH_LOOP;
+          backpatch((labelListType *) top(Continues), $2);
+          Continues = pop(Continues);
+       }
+     | "FOR" '(' T_id ','
+       {
+          p = lookupEntry($3, LOOKUP_ALL_SCOPES, true);
+          if (p->entryType == ENTRY_FUNCTION)
+             error("FOR loop index is not a variable");
+          else if ( !( (p->entryType == ENTRY_CONSTANT && equalType(p->u.eConstant.type, typeInteger) )
+                 || (p->entryType == ENTRY_VARIABLE && equalType(p->u.eVariable.type, typeInteger) )
+                 || (p->entryType == ENTRY_PARAMETER && equalType(p->u.eParameter.type, typeInteger) ) ) )
+             error("control variable in FOR loop is not an integer");
 
-            SymbolEntry *t1 = $6.from.Place; // Holds the FROM part
-            SymbolEntry *t2 = $6.to.Place; // Holds the TO part
-            SymbolEntry *t3 = $6.step.Place; // Holds the STEP
-            SymbolEntry *t4 = newTemporary(typeInteger); // Holds the current value of the control variable
-            labelListType *Next = NULL;
-            p = lookupEntry($3, LOOKUP_ALL_SCOPES, true); // Symboltable entry for control variable
+          Breaks = pushList(Breaks, (labelListType *) NULL);
+          Continues = pushList(Continues, (labelListType *) NULL);
+       }
+       range ')'
+       {
+          PUSH_LOOP;
 
-            if ($6.direction == -1) // Negative step
-               genQuad('-', Cnst(0), Var(t3), Var(t3));
+          SymbolEntry *t1 = $6.from.Place; // Holds the FROM part
+          SymbolEntry *t2 = $6.to.Place;   // Holds the TO part
+          SymbolEntry *t3 = $6.step.Place; // Holds the STEP
+          SymbolEntry *t4 = newTemporary(typeInteger); // Holds the current value of the control variable
+          labelListType *Next = NULL;
+          p = lookupEntry($3, LOOKUP_ALL_SCOPES, true); // Symbol table entry for control variable
 
-            genQuad(ASG, Var(t1), EMT, Var(t4));
+          if ($6.direction == -1) // Negative step
+             genQuad('-', Cnst(0), Var(t3), Var(t3));
 
-            int LoopBeg = nextQuad();
-            genQuad(ASG, Var(t4), EMT, Var(p));
-            if ($6.direction == 1)
-               genQuad(',', Var(p), Var(t2), Lbl(nextQuad() + 1));
-            else
-               genQuad('.', Var(p), Var(t2), Lbl(nextQuad() + 1));
+          genQuad(ASG, Var(t1), EMT, Var(t4));
 
-            Next = makeList( nextQuad() );
-            genQuad(JUMP, EMT, EMT, EMT);
+          int LoopBeg = nextQuad();
+          genQuad(ASG, Var(t4), EMT, Var(p));
+          if ($6.direction == 1)
+             genQuad(',', Var(p), Var(t2), Lbl(nextQuad() + 2));
+          else
+             genQuad('.', Var(p), Var(t2), Lbl(nextQuad() + 2));
 
-            $<LoopContext>$ = (loopContext) { .t1 = t1, .t2 = t2, .t3 = t3, .t4 = t4, .Next = Next, .LoopBeg = LoopBeg };
-         }
-         stmt
-         {
-            p = lookupEntry($3, LOOKUP_ALL_SCOPES, true); // Symboltable entry for control variable
+          Next = makeList( nextQuad() );
+          genQuad(JUMP, EMT, EMT, EMT);
 
-            backpatch($9.Next, nextQuad());
+          $<LoopContext>$ = (loopContext) { .t1 = t1, .t2 = t2, .t3 = t3, .t4 = t4, .Next = Next, .LoopBeg = LoopBeg };
+       }
+       stmt
+       {
+          p = lookupEntry($3, LOOKUP_ALL_SCOPES, true); // Symbol table entry for control variable
 
-            $$.Next = mergeLists( $<LoopContext>8.Next, (labelListType *) top( Breaks ) );
-            Breaks = pop(Breaks);
+          $$.Next = mergeLists( $<LoopContext>8.Next, (labelListType *) top( Breaks ) );
+          Breaks = pop(Breaks);
 
-            backpatch( (labelListType *) top(Continues), nextQuad() );
-            Continues = pop(Continues);
+          backpatch( (labelListType *) top(Continues), nextQuad() );
+          Continues = pop(Continues);
 
-            if ($6.direction == 1) genQuad('+', Var($<LoopContext>8.t4), Var($<LoopContext>8.t3), Var($<LoopContext>8.t4));
-            else                   genQuad('-', Var($<LoopContext>8.t4), Var($<LoopContext>8.t3), Var($<LoopContext>8.t4));
+          backpatch($9.Next, nextQuad());
+          if ($6.direction == 1) genQuad('+', Var($<LoopContext>8.t4), Var($<LoopContext>8.t3), Var($<LoopContext>8.t4));
+          else                   genQuad('-', Var($<LoopContext>8.t4), Var($<LoopContext>8.t3), Var($<LoopContext>8.t4));
 
-            genQuad(JUMP, EMT, EMT, Lbl($<LoopContext>8.LoopBeg));
+          genQuad(JUMP, EMT, EMT, Lbl($<LoopContext>8.LoopBeg));
 
-            POP_LOOP;
-         }
+          POP_LOOP;
+       }
       | "do" M
          {
             PUSH_LOOP;
@@ -746,32 +755,32 @@ assign : '='  { $$ = '='; }
        | "%=" { $$ = '%'; };
 
 range : expr
-      {
-         if (!equalType($1.t, typeInteger) )
-            error("range expression in FOR statement is not an integer");
-      }
-      to_downto expr
-      {
-         if (!equalType($4.t, typeInteger) )
-            error("range expression in FOR statement is not an integer");
-      }
-      opt_step
-      { $$ = (Range) { .from = $1, .to = $4, .direction = $3, .step = $6 }; };
+        {
+           if (!equalType($1.t, typeInteger) )
+              error("range expression in FOR statement is not an integer");
+        }
+        to_downto expr
+        {
+           if (!equalType($4.t, typeInteger) )
+              error("range expression in FOR statement is not an integer");
+        }
+        opt_step
+        { $$ = (Range) { .from = $1, .to = $4, .direction = $3, .step = $6 }; };
 to_downto : "TO" { $$ = 1; } | "DOWNTO" { $$ = -1; };
 opt_step : /* Empty */
-         {
-            SymbolEntry *tmp = newTemporary(typeInteger);
-            genQuad(ASG, Cnst(1), EMT, Var(tmp));
-            $$ = (rlvalue) { .t = typeInteger, .Place = tmp };
-         }
+           {
+              SymbolEntry *tmp = newTemporary(typeInteger);
+              genQuad(ASG, Cnst(1), EMT, Var(tmp));
+              $$ = (rlvalue) { .t = typeInteger, .Place = tmp };
+           }
          | "STEP" expr 
-         {
-            if (!equalType($2.t, typeInteger) )
-               error("step expression in FOR statement is not an integer");
+           {
+              if (!equalType($2.t, typeInteger) )
+                 error("step expression in FOR statement is not an integer");
 
-            //TODO: add check for negative step
-            $$ = $2;
-         };
+              //TODO: add check for negative step
+              $$ = $2;
+           };
 
 clause : more_clause opt_clause ;
 more_clause : /* Empty */ %prec SWITCH_BRK | stmt more_clause ;

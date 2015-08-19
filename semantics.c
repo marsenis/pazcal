@@ -21,6 +21,7 @@ void* top(Stack S) {
       case NEXT_LIST:
          return (void*)S->u.l;
    }
+   return NULL;
 }
 
 Stack pushSymEntry(Stack S, SymbolEntry *p) {
@@ -48,9 +49,9 @@ Stack paramCodeGen(Stack Func, Stack Param, rlvalue expr) {
    SymbolEntry *t = (SymbolEntry *) top(Param);
 
    if (t == NULL)
-      error("Function \"%s\" needs less arguments", f->id);
+      error("too many arguments to function \"%s\"", f->id);
    else if ( !assignmentCompatibleTypes(t->u.eParameter.type, expr.t)) {
-      error("Type mismatch on the parameters given to the function \"%s\"", f->id);
+      error("type mismatch between formal/real parameters in the call of function \"%s\"", f->id);
 #ifdef DEBUG_SYMBOL
       printf("Type mismatch ");
       printType(t->u.eParameter.type);
@@ -202,7 +203,7 @@ Type generalType(Type t1, Type t2) {
    else return typeVoid;
 }
 
-Type compatibleOperants(char op, Type t1) {
+Type compatibleOperands(char op, Type t1) {
    switch(op) {
       case '&': case '|':
          if (!equalType(t1, typeBoolean))
@@ -316,7 +317,7 @@ Const applyOperation(char op, Const c1, Const c2) {
       cp2 = promote(c2, genType);
    }
 
-   result.type = compatibleOperants(op, cp1.type);
+   result.type = compatibleOperands(op, cp1.type);
    if ( equalType(result.type, typeVoid) ) {
       error("operation '%s' not defined for this type of data", show(op));
       return (Const) { typeVoid, {0} }; // attempt to recover
@@ -389,14 +390,14 @@ Type exprTypeCheck(char op, Type t1, Type t2) {
    Type result;
 
    if (!compatibleTypes(t1, t2)) {
-      error("incompatible types of operants in operation '%s'", show(op));
+      error("incompatible types of operands in operation '%s'", show(op));
       return typeVoid;
    } else if (!equalType(t1, t2))
       t1 = t2 = generalType(t1, t2);
 
-   result = compatibleOperants(op, t1);
+   result = compatibleOperands(op, t1);
    if ( equalType(result, typeVoid) ) {
-      error("incompatible types of operants in operation '%s'", show(op));
+      error("incompatible types of operands in operation '%s'", show(op));
       return typeVoid;
    }
 

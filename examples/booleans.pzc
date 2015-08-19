@@ -1,10 +1,14 @@
+FUNC bool f(int i, bool p) {
+   return (i >= 0) and (i < 100) or not p;
+}
+
 PROGRAM test() {
-   bool x, p;
-   int i;
+   bool x, p = false;
+   int i = 5;
 
    //l = (a > b) || l;
 
    //k = (a > b) ||   [   (a <= c) && x && not y  ]    ||   (k and !l);
    //
-   x = (i >= 0) and (i < 100) or not p;
+   x = f(i, p) || p;
 }
