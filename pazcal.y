@@ -639,108 +639,104 @@ stmt : ';'
 
           POP_LOOP;
        }
-      | "do" M
-         {
-            PUSH_LOOP;
-            Breaks = pushList(Breaks, (labelListType *) NULL);
-            Continues = pushList(Continues, (labelListType *) NULL);
-         } stmt "while" M '(' expr ')' ';'
-         {
-            backpatch($8.True, $2);
-            backpatch($4.Next, $6);
-            $$.Next = $8.False;
-            genQuad(JUMP, EMT, EMT, (opts) { LBL, (contentType) { .label = $6 } });
+     | "do" M
+       {
+          PUSH_LOOP;
+          Breaks = pushList(Breaks, (labelListType *) NULL);
+          Continues = pushList(Continues, (labelListType *) NULL);
+       } stmt "while" M '(' expr ')' ';'
+       {
+          backpatch($8.True, $2);
+          backpatch($4.Next, $6);
+          $$.Next = $8.False;
+          //genQuad(JUMP, EMT, EMT, Lbl($6)); // What the heck is this? :P
 
-            if (!equalType($8.t, typeBoolean))
-               error("condition of the 'do-while' statement is not a boolean");
+          if (!equalType($8.t, typeBoolean))
+             error("condition of the 'do-while' statement is not a boolean");
 
-            POP_LOOP;
-            $$.Next = mergeLists($$.Next, (labelListType *) top(Breaks));
-            Breaks = pop(Breaks);
+          POP_LOOP;
+          $$.Next = mergeLists($$.Next, (labelListType *) top(Breaks));
+          Breaks = pop(Breaks);
 
-            labelListType *p = (labelListType *) top(Continues);
-            Continues = pop(Continues);
-            backpatch(p, $6);
-         }
-      | "switch" '(' expr ')'
-         {
-            PUSH_SWITCH;
-            if (!equalType($3.t, typeInteger))
-               error("switch expression is not an integer");
-         }
-         '{' opt_case_clause opt_default_clause '}' { POP_SWITCH; cannotBreak >>= 1; }
-      | "break" ';'
-         {
-            if ((cannotBreak & 1)) error("break cannot be used in this context");
-            
-            labelListType *Next = (labelListType *) top(Breaks);
-            Breaks = pop(Breaks);
-            Next = mergeLists(Next, makeList(nextQuad()));
-            Breaks = pushList(Breaks, Next);
-            genQuad(JUMP, EMT, EMT, EMT);
-         }
-      | "continue" ';'
-         {
-            if (!openLoops) error("continue used outside of a loop");
+          labelListType *p = (labelListType *) top(Continues);
+          Continues = pop(Continues);
+          backpatch(p, $6);
+       }
+     | "switch" '(' expr ')'
+       {
+          PUSH_SWITCH;
+          if (!equalType($3.t, typeInteger))
+             error("expression in switch is not an integer");
+       }
+       '{' opt_case_clause opt_default_clause '}'
+       {
+          POP_SWITCH;
+          //cannotBreak >>= 1; // What the heck? :P
+       }
+     | "break" ';'
+       {
+          if ((cannotBreak & 1)) error("\"break\" cannot be used in this context");
+          
+          labelListType *Next = (labelListType *) top(Breaks);
+          Breaks = pop(Breaks);
+          Next = mergeLists(Next, makeList(nextQuad()));
+          Breaks = pushList(Breaks, Next);
+          genQuad(JUMP, EMT, EMT, EMT);
+       }
+     | "continue" ';'
+       {
+          if (!openLoops) error("\"continue\" used outside of a loop");
 
-            labelListType *Next = (labelListType *) top(Continues);
-            Continues = pop(Continues);
-            Next = mergeLists(Next, makeList(nextQuad()));
-            Continues = pushList(Continues, Next);
-            genQuad(JUMP, EMT, EMT, EMT);
+          labelListType *Next = (labelListType *) top(Continues);
+          Continues = pop(Continues);
+          Next = mergeLists(Next, makeList(nextQuad()));
+          Continues = pushList(Continues, Next);
+          genQuad(JUMP, EMT, EMT, EMT);
+       }
+     | "return" opt_expr ';'
+       {
+          rlvalue result;
 
-            //int *p = (int *) top(Continues);
-            //genQuad(JUMP, EMT, EMT, (opts) { LBL, (contentType) { .label = *p } });
-         }
-      | "return" opt_expr ';'
-      {
-         rlvalue result;
+          if (!compatibleTypes($2.t, func->u.eFunction.resultType))
+             error("incompatible types in return statement");
 
-         if (!compatibleTypes($2.t, func->u.eFunction.resultType))
-            error("Incompatible types in return statement");
+          if (!equalType(func->u.eFunction.resultType, typeVoid)) {
+             SymbolEntry *tmp = newTemporary(func->u.eFunction.resultType);
+             if (equalType($2.t, typeBoolean)) {
+                result = genCodeBooleanExpr($2, tmp);
+                backpatch(result.Next, nextQuad());
+             } else
+                result = $2;
 
-         if (!equalType(func->u.eFunction.resultType, typeVoid)) {
-            SymbolEntry *tmp = newTemporary(func->u.eFunction.resultType);
-            if (equalType($2.t, typeBoolean)) {
-               result = genCodeBooleanExpr($2, tmp);
-               backpatch(result.Next, nextQuad());
-            } else
-               result = $2;
+             genQuad(RETV, Var(result.Place), EMT, EMT); // TODO: replace RETV with $$
+          } else genQuad(RET, EMT, EMT, EMT);
+             
+       }
+     | write { firstWriteArgument = true; } '(' opt_format ')'
+       {
+          if (writeType % 2 == 1) { // Should print a new line
+             genQuad(PAR, Var(NEWLINE), Mode(PASS_BY_VALUE), EMT);
+             genQuad(PAR, Cnst(1),      Mode(PASS_BY_VALUE), EMT);
+             genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
+          }
+       } ';'
+     | block { $$ = $1; };
 
-            genQuad(RETV, Var(result.Place), EMT, EMT); // TODO: replace RETV with $$
-            /*
-            if (equalType(result.t, typeVoid))
-               genQuad(RET, EMT, EMT, EMT);
-            else
-               genQuad(RETV, Var(result.Place), EMT, EMT); // TODO: replace RETV with $$
-            */
-         } else genQuad(RET, EMT, EMT, EMT);
-            
-      }
-      | write { firstWriteArgument = true; } '(' opt_format ')'
-         {
-            if (writeType % 2 == 1) { // Should print a new line
-               genQuad(PAR, Var(NEWLINE), Mode(PASS_BY_VALUE), EMT);
-               genQuad(PAR, Cnst(1),      Mode(PASS_BY_VALUE), EMT);
-               genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
-            }
-         } ';'
-      | block { $$ = $1; };
 pm                : "++" { $$ = '+'; } | "--" { $$ = '-'; };
 opt_case_clause   : /* Empty */
                   | "case" const_expr
-                     {
-                        if (!equalType($2.type, typeInteger))
-                           error("Case expression is not an integer");
-                     }
-                  ':' more_case clause opt_case_clause;
+                    {
+                       if (!equalType($2.type, typeInteger))
+                          error("expression in case is not an integer");
+                    }
+                    ':' more_case clause opt_case_clause;
 more_case         : /* Empty */
                   | "case" const_expr
-                     {
-                        if (!equalType($2.type, typeInteger))
-                           error("Case expression is not an integer");
-                     }
-                  ':' more_case ;
+                    {
+                       if (!equalType($2.type, typeInteger))
+                          error("expression in case is not an integer");
+                    }
+                   ':' more_case ;
 opt_default_clause: /* Empty */ | "default" ':' clause ;
 opt_expr          : /* Empty */ { $$.t = typeVoid; }
                   | expr        { $$ = $1; };
@@ -796,30 +792,24 @@ format : expr
             genCodeWrite($1, firstWriteArgument, false, writeType, NULL, NULL);
             firstWriteArgument = false;
          }
-       | "FORM" '(' expr
+       | "FORM" '(' expr ',' expr
          {
-            if (!arithmeticType($3.t) && !equalType($3.t, typeBoolean) && !equalType($3.t, typeIArray(typeChar)))
-               error("non basic type (or string) given to a write command");
-         }
-       ',' expr
-         {
-            if (!equalType($6.t, typeInteger))
+            if (!equalType($5.t, typeInteger))
                error("format's second parameter (field length) is not a integer");
          }
-       opt_format_expr
+         opt_format_expr
          {
-            if (!equalType($8.t, typeVoid)) {
-               if (!equalType($8.t, typeInteger))
+            if (!equalType($7.t, typeVoid)) {
+               if (!equalType($7.t, typeInteger))
                   error("format's third parameter (decimal digits) is not an integer");
                if (!equalType($3.t, typeReal))
                   error("expression of type REAL was expected since FORM has three parameters");
             }
 
-            genCodeWrite($3, firstWriteArgument, true, writeType, $6, $8);
+            genCodeWrite($3, firstWriteArgument, true, writeType, &($5), &($7));
 
             firstWriteArgument = false;
-         }
-       ')' ;
+         } ')' ;
 opt_format_expr : /* Empty */ { $$.t = typeVoid; } | ',' expr { $$ = $2; } ;
 
 %%

@@ -13,6 +13,7 @@ PROGRAM test() {
 
 
    // Test 2
+   /*
    while (true) {
       switch (x) {
          case 1:
@@ -20,12 +21,13 @@ PROGRAM test() {
          break;
       }
    }
+   */
 
    switch (x) {
       case 1:
          WRITE("case 1");
          break;
-         break;
+         //break;
       default:
          WRITE("default");
          NEXT;

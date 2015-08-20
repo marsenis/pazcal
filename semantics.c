@@ -483,8 +483,9 @@ rlvalue genCodeBooleanExpr(rlvalue x, SymbolEntry *p) {
    return result;
 }
 
-void genCodeWrite(rlvalue x, bool firstWriteArgument, bool format, int writeType, rlvalue w, rlvalue d) {
-   if (!firstWriteArgument && writeType >= 2) { // Should put a space between the arguments printed
+void genCodeWrite(rlvalue x, bool firstWriteArgument, bool format, int writeType, rlvalue *w, rlvalue *d) {
+   // Should put a space between the arguments printed
+   if (!firstWriteArgument && writeType >= 2) {
       genQuad(PAR, Var(SPACE), Mode(PASS_BY_VALUE), EMT);
       genQuad(PAR, Cnst(1),   Mode(PASS_BY_VALUE), EMT);
       genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
@@ -502,7 +503,7 @@ void genCodeWrite(rlvalue x, bool firstWriteArgument, bool format, int writeType
       genQuad(PAR, Var(x.Place), Mode(PASS_BY_VALUE), EMT);
 
    if (format)
-      genQuad(PAR, Var(w.Place), Mode(PASS_BY_VALUE), EMT);
+      genQuad(PAR, Var(w->Place), Mode(PASS_BY_VALUE), EMT);
    else
       genQuad(PAR, Cnst(1), Mode(PASS_BY_VALUE), EMT);
 
@@ -511,8 +512,8 @@ void genCodeWrite(rlvalue x, bool firstWriteArgument, bool format, int writeType
    else if (equalType(x.t, typeChar))
       genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
    else if (equalType(x.t, typeReal)) {
-      if (format && !equalType(d.t, typeVoid))
-         genQuad(PAR, Var(d.Place), Mode(PASS_BY_VALUE), EMT);
+      if (format && !equalType(d->t, typeVoid))
+         genQuad(PAR, Var(d->Place), Mode(PASS_BY_VALUE), EMT);
       else {
          SymbolEntry *q = newConstant(newConstName(), typeInteger, 7);
          genQuad(PAR, Var(q), Mode(PASS_BY_VALUE), EMT);

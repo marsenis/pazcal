@@ -53,6 +53,8 @@ rlvalue unopCodeGen(char,  rlvalue);
 SymbolEntry *findLvaluePlace(lvalue);
 rlvalue genCodeBooleanExpr(rlvalue, SymbolEntry*);
 
+void genCodeWrite(rlvalue, bool, bool, int, rlvalue *, rlvalue *);
+
 Stack paramCodeGen(Stack, Stack, rlvalue);
 
 void addLibraryFunctions();
