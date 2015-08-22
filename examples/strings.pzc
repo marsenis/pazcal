@@ -1,0 +1,7 @@
+PROGRAM main() {
+   WRITELN("Hello World");
+
+   WRITESPLN("hello");
+
+   int x = strlen("test");
+}

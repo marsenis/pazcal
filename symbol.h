@@ -116,6 +116,7 @@ typedef union {                              /* Τιμή                  */
 typedef struct {                        /******** Σταθερά ********/
    Type          type;                  /* Τύπος                 */
    RepTypes      value;
+   int           id;                    /* Used in target code generation */
 } Const;
 
 /* Τύπος εγγραφής στον πίνακα συμβόλων */

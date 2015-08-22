@@ -54,4 +54,5 @@ void delete (void * p)
    --------------------------------------------------------------------- */
 
 const char * filename;
+FILE *asmfile;
 int linecount;

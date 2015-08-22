@@ -2,6 +2,11 @@ const int x = ' ', y = 2, z = 3;
 const char a = 'a', b = 'b', c = 'c';
 char pin[10][20][30];
 
+PROC test(int x) {
+   int y;
+   y = x + 1*x;
+}
+
 PROGRAM hello() {
    bool test = true;
    int k = pin[1][2][3], i;

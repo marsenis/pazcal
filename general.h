@@ -22,6 +22,8 @@
 #ifndef __GENERAL_H__
 #define __GENERAL_H__
 
+#include <stdio.h>
+
 
 /* ---------------------------------------------------------------------
  * ----------- Πρωτότυπα των συναρτήσεων διαχείρισης μνήμης ------------
@@ -37,6 +39,6 @@ void   delete (void *);
 
 extern int linecount;
 extern const char * filename;
-
+extern FILE * asmfile;
 
 #endif

@@ -8,6 +8,7 @@
 #include "pazcal.lex.h"
 #include "semantics.h"
 #include "intermediateCode.h"
+#include "target.h"
 
 #define SYMB_TABLE_SIZE 10007
 
@@ -290,7 +291,12 @@ type : "int"  { $$ = typeInteger; }
 const_expr : T_int_const        { $$ = (Const) { typeInteger, {.vInteger=$1} }; }
            | T_float_const      { $$ = (Const) { typeReal, {.vReal=$1} }; }
            | T_char_const       { $$ = (Const) { typeChar, {.vChar=$1} }; }
-           | T_string_literal   { $$ = (Const) { typeArray(strlen($1), typeChar), {.vString=$1} }; }
+           | T_string_literal
+             {
+                int id = newStringID();
+                $$ = (Const) { typeArray(strlen($1), typeChar), {.vString=$1}, id };
+                TG_StringConst($1, id);
+             }
            | "true"             { $$ = (Const) { typeBoolean, {.vBoolean=true} }; }
            | "false"            { $$ = (Const) { typeBoolean, {.vBoolean=false} }; }
            | '(' const_expr ')' { $$ = $2; }
@@ -324,7 +330,14 @@ const_expr : T_int_const        { $$ = (Const) { typeInteger, {.vInteger=$1} }; 
 expr : T_int_const         { $$.t = typeInteger; $$.Place = newConstant(newConstName(), typeInteger, $1); }
      | T_float_const       { $$.t = typeReal;    $$.Place = newConstant(newConstName(), typeReal,    $1); }
      | T_char_const        { $$.t = typeChar;    $$.Place = newConstant(newConstName(), typeChar,    $1); }
-     | T_string_literal    { $$.t = typeArray(strlen($1), typeChar); $$.Place = newConstant(newConstName(), $$.t, $1); }
+     | T_string_literal
+       {
+          $$.t = typeArray(strlen($1), typeChar);
+          $$.Place = newConstant(newConstName(), $$.t, $1);
+          int id = newStringID();
+          $$.Place->u.eConstant.id = id;
+          TG_StringConst($1, id);
+       }
      | "true"
        {
           $$ = (rlvalue) { TRUE, typeBoolean };
@@ -819,18 +832,26 @@ opt_format_expr : /* Empty */ { $$.t = typeVoid; } | ',' expr { $$ = $2; } ;
       filename    : Read from file "filename"
 */
 int main(int argc, char *argv[]) {
+   char asmfilename[100];
+
    if (argc != 2) { printf("Usage: %s [-f | filename]\n", argv[0]); exit(1); }
 
    linecount = 1;
-   if (strcmp(argv[1], "-f") == 0) filename = "stdin";
+   if (strcmp(argv[1], "-f") == 0) filename = "a";
    else {
       filename = argv[1];
       FILE *f = fopen(filename, "r");
+
+      /* Assembly File */
+      sprintf(asmfilename, "%s.s", filename);
+      asmfile = fopen(asmfilename, "w");
 
       if (!f) { fprintf(stderr, "No such file or directory\n"); exit(2); }
       
       yy_switch_to_buffer(yy_create_buffer(f, YY_BUF_SIZE));
    }
+
+   TG_Preamble();
 
    initSymbolTable(SYMB_TABLE_SIZE);
    openScope(); // library scope
@@ -839,10 +860,21 @@ int main(int argc, char *argv[]) {
 
    if (yyparse()) exit(1);
 
+   printf("\t--- INTERMEDIATE CODE ---\n");
    printImm();
+
+   TG_Generate();
 
    closeScope();
    closeScope();
+
+   fclose(asmfile);
+
+   // Temporary
+   char cmd[100];
+   sprintf(cmd, "grep -n . %s\n", asmfilename);
+   printf("\t--- TARGET CODE ---\n");
+   system(cmd);
 
    return 0;
 }
