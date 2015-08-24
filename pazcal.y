@@ -218,12 +218,6 @@ array_var_init : /* Empty */ { $$ = varType; }
                   { $$ = arrayTypeCheck($2, $4); } ;
 
 routine_header : proc_func T_id
-                 /* TODO: somehow many statements of the form
-                          function_call($i) have been replaced by
-                          function_call$i   probably by some s/../../g
-                          Fortunately Bison transforms $i to (...) so
-                          the final code is correct but I should fix it soon
-                  */
                  { func = newFunction($2); openScope(); insideRoutine = true; }
                  '(' opt_args ')'
                  { endFunctionHeader(func, $1);
@@ -267,7 +261,9 @@ program_header : "PROGRAM" T_id '(' ')'
                  {
                     func = newFunction($2);
                     endFunctionHeader(func, typeVoid);
-                    genQuad(UNIT, Var(func), EMT, EMT);
+                    insideRoutine = true;
+                    //genQuad(UNIT, ( (opts) { VAR, (contentType) { .variable = func }, currentScope } ), EMT, EMT);
+                    //genQuad(UNIT, Var(func), EMT, EMT);
                  };
 
 program : program_header
@@ -482,7 +478,8 @@ block : '{'
         {
            openScope();
            if (insideRoutine)
-              genQuad(UNIT, Var(func), EMT, EMT);
+              genQuad(UNIT, ( (opts) { VAR, (contentType) { .variable = func }, currentScope } ), EMT, EMT);
+              //genQuad(UNIT, Var(func), EMT, EMT);
            insideRoutine = false;
         }
         opt_block '}'
@@ -872,8 +869,11 @@ int main(int argc, char *argv[]) {
 
    // Temporary
    char cmd[100];
-   sprintf(cmd, "grep -n . %s\n", asmfilename);
+   sprintf(cmd, "grep . %s\n", asmfilename);
    printf("\t--- TARGET CODE ---\n");
+   system(cmd);
+
+   sprintf(cmd, "cp %s pazcallib/target.s && cd pazcallib && make && ./target && cd ..\n", asmfilename);
    system(cmd);
 
    return 0;

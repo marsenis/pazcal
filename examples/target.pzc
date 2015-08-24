@@ -1,0 +1,7 @@
+PROGRAM main() {
+   int x = 1, y = 2, z = 3, w = 4;
+
+   x = y + 2*(z + 5);
+   w = 42-x;
+   WRITESPLN("test", w);
+}

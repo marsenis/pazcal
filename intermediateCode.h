@@ -27,6 +27,7 @@ typedef union {
 typedef struct {
    enum optsType type;
    contentType content;
+   Scope *scope; // Temporary: It's used by UNIT to hold the new scope
 } opts; //OPeraTS
 
 typedef struct {

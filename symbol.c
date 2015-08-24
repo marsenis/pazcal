@@ -613,9 +613,10 @@ unsigned int sizeOfType (Type type)
             internal("Type void has no size");
             break;
         case TYPE_INTEGER:
+            return 4;
         case TYPE_IARRAY:
         case TYPE_POINTER:
-            return 2;
+            return 8;
         case TYPE_BOOLEAN:
         case TYPE_CHAR:
             return 1;

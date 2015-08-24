@@ -76,6 +76,7 @@ void puts(char s[])
 */
 
 // TODO: remove the constrain of 100 characters
+// TODO: Handle signs (maybe use printf and be done with it)
 void WRITE_INT(int n, int w)
 {
    char buf[100];

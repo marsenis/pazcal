@@ -7,7 +7,7 @@ int main() {
    putchar('\n');
    WRITE_STRING("makis", 11);
    putchar('\n');
-   WRITE_REAL(pi(), 11, 2);
+   //WRITE_REAL(pi(), 11, 2);
    puts("\nHello World");
    exit(0);
    return 0;

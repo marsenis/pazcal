@@ -1,0 +1,71 @@
+	.file "target.pzc"
+	.section .rodata
+.STR0:
+	.string	"test"
+	.text
+   .globl main
+   .type main, @function
+main:
+	pushq	%rbp
+	movq	%rsp, %rbp
+	subq	$40,%rsp
+L2:
+	movl	$1, %eax
+	movl	%eax, -4(%rbp)
+L3:
+	movl	$2, %eax
+	movl	%eax, -8(%rbp)
+L4:
+	movl	$3, %eax
+	movl	%eax, -12(%rbp)
+L5:
+  movl	$4, %eax
+  movl	%eax, -16(%rbp)
+L6:
+  movl	-12(%rbp), %eax
+  movl	$5, %edx
+  addl	%edx, %eax
+  movl	%eax, -20(%rbp)
+L7:
+  movl	$2, %eax
+  movl	-20(%rbp), %edx # tmp1
+  imull	%edx, %eax
+  movl	%eax, -24(%rbp)
+L8:
+  movl	-8(%rbp), %eax
+  movl	-24(%rbp), %edx # tmp2
+  addl	%edx, %eax
+  movl	%eax, -28(%rbp)
+L9:
+  movl	-28(%rbp), %eax # tmp3
+  movl	%eax, -4(%rbp)
+L10:
+  movl	$42, %eax
+  movl	-4(%rbp), %edx
+  subl	%edx, %eax
+  movl	%eax, -32(%rbp)
+L11:
+  movl	-32(%rbp), %eax # tmp4
+  movl	%eax, -16(%rbp)
+L12:
+L13:
+L14:
+L15:
+L16:
+L17:
+L18:
+   movl  -16(%rbp), %edi
+   movl  $0, %esi
+   call  WRITE_INT
+
+   movl  $10, %edi
+   movl  $0, %esi
+   call  WRITE_CHAR
+
+   #movl  $0, %edi
+   #call  exit
+
+.test:
+	movq	%rbp, %rsp
+	popq	%rbp
+	ret

@@ -573,7 +573,7 @@ void addLibraryFunctions() {
 
    p = newFunction("WRITE_STRING");
    openScope();
-   newParameter("s", typeIArray(typeChar), PASS_BY_REFERENCE, p);
+   newParameter("s", typeIArray(typeChar), PASS_BY_VALUE, p);
    newParameter("w", typeInteger, PASS_BY_VALUE, p);
    closeScope();
    endFunctionHeader(p, typeVoid);
@@ -683,33 +683,33 @@ void addLibraryFunctions() {
    // String functions
    p = newFunction("strlen");
    openScope();
-   newParameter("s", typeIArray(typeChar), PASS_BY_REFERENCE, p);
+   newParameter("s", typeIArray(typeChar), PASS_BY_VALUE, p);
    closeScope();
    endFunctionHeader(p, typeInteger);
 
    p = newFunction("strcmp");
    openScope();
-   newParameter("s1", typeIArray(typeChar), PASS_BY_REFERENCE, p);
-   newParameter("s2", typeIArray(typeChar), PASS_BY_REFERENCE, p);
+   newParameter("s1", typeIArray(typeChar), PASS_BY_VALUE, p);
+   newParameter("s2", typeIArray(typeChar), PASS_BY_VALUE, p);
    closeScope();
    endFunctionHeader(p, typeInteger);
 
    p = newFunction("strcpy");
    openScope();
-   newParameter("trg", typeIArray(typeChar), PASS_BY_REFERENCE, p);
-   newParameter("src", typeIArray(typeChar), PASS_BY_REFERENCE, p);
+   newParameter("trg", typeIArray(typeChar), PASS_BY_VALUE, p);
+   newParameter("src", typeIArray(typeChar), PASS_BY_VALUE, p);
    closeScope();
    endFunctionHeader(p, typeVoid);
 
    p = newFunction("strcat");
    openScope();
-   newParameter("trg", typeIArray(typeChar), PASS_BY_REFERENCE, p);
-   newParameter("src", typeIArray(typeChar), PASS_BY_REFERENCE, p);
+   newParameter("trg", typeIArray(typeChar), PASS_BY_VALUE, p);
+   newParameter("src", typeIArray(typeChar), PASS_BY_VALUE, p);
    closeScope();
    endFunctionHeader(p, typeVoid);
 
    newConstant("$SPACE", typeChar, ' ');
-   newConstant("$NEWLINE", typeChar, ' ');
+   newConstant("$NEWLINE", typeChar, '\n');
    newConstant("$ZERO", typeInteger, 0);
    newConstant("$TRUE", typeBoolean, true);
    newConstant("$FALSE", typeBoolean, false);
