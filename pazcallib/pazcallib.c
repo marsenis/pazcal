@@ -75,10 +75,12 @@ void puts(char s[])
 }
 */
 
-// TODO: remove the constrain of 100 characters
-// TODO: Handle signs (maybe use printf and be done with it)
 void WRITE_INT(int n, int w)
 {
+   char buf[30];
+   sprintf(buf, "%%%dd", w);
+   printf(buf, n);
+   /*
    char buf[100];
    int cnt, j;
 
@@ -89,16 +91,22 @@ void WRITE_INT(int n, int w)
    format_reverse(buf, cnt, w);
 
    fputs(buf, stdout);
+   */
 }
 
 void WRITE_BOOL(bool b, int w)
 {
+   char buf[10];
+   sprintf(buf, "%%%ds\n", w);
+   printf(buf, b ? "true" : "false");
+   /*
    char buf[100];
 
    strcpy(buf, b ? "eurt" : "eslaf");
    format_reverse(buf, 4 + !b, w);
 
    fputs(buf, stdout);
+   */
 }
 
 void WRITE_CHAR(char c, int w)

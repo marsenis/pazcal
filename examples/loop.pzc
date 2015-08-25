@@ -1,0 +1,10 @@
+PROGRAM main() {
+   int x, sum = 0;
+
+   do {
+      x = READ_INT();
+      sum += x;
+   } while (x > 0);
+
+   WRITESPLN("sum:", sum);
+}

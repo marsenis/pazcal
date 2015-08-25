@@ -1,3 +1,4 @@
 PROGRAM main() {
-   WRITELN(strlen("Makis"));
+   int x = READ_INT();
+   WRITELN(x MOD 2);
 }

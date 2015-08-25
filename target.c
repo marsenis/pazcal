@@ -30,7 +30,7 @@ char regName[DATATYPES][REGS][5] =
 enum regs results[6] = { DI, SI, DX, CX, R8, R9 };
 
 void label(int i) {
-   gen("L%d:\n", i);
+   gen(".L%d:\n", i);
 }
 
 /* Translates a high level type to a low level dataType */
@@ -153,6 +153,7 @@ void store(enum regs R, opts x) {
             default:
                break;
          }
+         break;
       default:
          break;
    }
@@ -167,6 +168,19 @@ char *arithmCmd(enum opType op) {
    }
 }
 
+char *compCmd(enum opType op) {
+   switch (op) {
+      case '=': return "e";
+      case '<': return "l";
+      case ',': return "le";
+      case '>': return "g";
+      case '.': return "ge";
+      case '!': return "ne";
+      default:
+         internal("\rtarget.c:[compCmd]: Invalid comparison operator");
+         return "";
+   }
+}
 void TG_quad(immType q) {
    SymbolEntry *s;
    enum dataTypes t;
@@ -199,16 +213,35 @@ void TG_quad(immType q) {
          load(AX, q.x);
          store(AX, q.z);
          break;
-      case '+': case '-': case '*': case '/': case '%':
+      case '+': case '-': case '*':
          load(AX, q.x);
-         load(DX, q.y);
+         load(BX, q.y);
 
          s = q.z.content.variable;
          t = trans(s->u.eVariable.type); // TODO: a little hackish
 
-         gen("\t%s%c\t%s, %s\n", arithmCmd(q.op), cmd(t), reg(DX, t), reg(AX, t));
+         gen("\t%s%c\t%s, %s\n", arithmCmd(q.op), cmd(t), reg(BX, t), reg(AX, t));
 
          store(AX, q.z);
+         break;
+      case '/': case '%':
+         gen("\tpushq\t%%rdx\n"); // Save %rdx
+         load(AX, q.x);
+         load(BX, q.y);
+         gen("\tcqto\n");        // Sign extend %rax to %rdx:%rax
+         gen("\tidivq\t%%rbx\n");
+         if (q.op == '/') store(AX, q.z);
+         else             store(DX, q.z);
+         gen("\tpopq\t%%rdx\n");  // Restore %rdx
+         break;
+      case '=': case '<': case ',': case '>': case '.': case '!':
+         load(AX, q.x);
+         load(BX, q.y);
+         gen("\tcmpq\t%%rbx, %%rax\n");
+         gen("\tj%s\t.L%d\n", compCmd(q.op), q.z.content.label);
+         break;
+      case JUMP:
+         gen("\tjmp\t.L%d\n", q.z.content.label);
          break;
       case PAR:
          switch (q.y.content.mode) {

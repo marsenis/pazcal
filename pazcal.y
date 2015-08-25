@@ -259,7 +259,9 @@ routine : routine_header ';' { forwardFunction(func); closeScope(); }
 
 program_header : "PROGRAM" T_id '(' ')'
                  {
-                    func = newFunction($2);
+                    // TODO: Change "main" back to $2.
+                    //       "main" is for easy linking
+                    func = newFunction("main"); //newFunction($2);
                     endFunctionHeader(func, typeVoid);
                     insideRoutine = true;
                     //genQuad(UNIT, ( (opts) { VAR, (contentType) { .variable = func }, currentScope } ), EMT, EMT);
@@ -476,16 +478,23 @@ more_opt_call : /* Empty */
 
 block : '{'
         {
-           openScope();
-           if (insideRoutine)
+           /* TODO: Temporarily, only function blocks open a new scope.
+                    Opening a scope in the midst of a routine is difficult
+                    to handle in the target code generation stage */
+           if (insideRoutine) {
+              openScope();
               genQuad(UNIT, ( (opts) { VAR, (contentType) { .variable = func }, currentScope } ), EMT, EMT);
+              $<integer>$ = 1;
+              insideRoutine = false;
+           } else
+              $<integer>$ = 0;
               //genQuad(UNIT, Var(func), EMT, EMT);
-           insideRoutine = false;
         }
         opt_block '}'
         {
            $$ = $3;
-           closeScope();
+           if ($<integer>2)
+              closeScope();
         } ;
 opt_block : /* Empty */ { $$ = (rlvalue) { .t = NULL }; }
           | local_def opt_block { $$ = $2; }
