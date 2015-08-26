@@ -1,4 +1,3 @@
-/*
 PROC hanoi (char source[], char target[], char auxiliary[], int rings)
 {
    if (rings > 0) {
@@ -7,7 +6,6 @@ PROC hanoi (char source[], char target[], char auxiliary[], int rings)
       hanoi(auxiliary, target, source, rings-1);
    }
 }
-*/
 
 PROC hanoi2 (int source, int target, int auxiliary, int rings)
 {
@@ -23,6 +21,6 @@ PROGRAM solve()
    WRITE("Please, give the number of rings: ");
    int numberOfRings = READ_INT();
    WRITELN("\nHere is the solution:\n");
-   //hanoi("left", "right", "middle", numberOfRings);
-   hanoi2(1, 3, 2, numberOfRings);
+   hanoi("left", "right", "middle", numberOfRings);
+   //hanoi2(1, 3, 2, numberOfRings);
 }

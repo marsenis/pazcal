@@ -241,7 +241,7 @@ formal : T_id     { newParameter($1, varType, PASS_BY_VALUE, func); }
             else
                arrayType = arrayTypeCheck($3, $5);
 
-            newParameter($1, arrayType, PASS_BY_REFERENCE, func);
+            newParameter($1, arrayType, PASS_BY_VALUE, func); //PASS_BY_REFERENCE, func);
          };
 opt_const_expr : /* Empty */ { $$ = (Const) { typeVoid, {0} }; }
                | const_expr  { $$ = $1; } ;

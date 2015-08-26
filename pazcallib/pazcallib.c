@@ -97,7 +97,7 @@ void WRITE_INT(int n, int w)
 void WRITE_BOOL(bool b, int w)
 {
    char buf[10];
-   sprintf(buf, "%%%ds\n", w);
+   sprintf(buf, "%%%ds", w);
    printf(buf, b ? "true" : "false");
    /*
    char buf[100];
