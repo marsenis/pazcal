@@ -882,8 +882,10 @@ int main(int argc, char *argv[]) {
    printf("\t--- TARGET CODE ---\n");
    system(cmd);
 
+   /*
    sprintf(cmd, "cp %s pazcallib/target.s && cd pazcallib && make && ./target && cd ..\n", asmfilename);
    system(cmd);
+   */
 
    return 0;
 }

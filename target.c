@@ -27,7 +27,7 @@ char regName[DATATYPES][REGS][5] =
    {  "%al",  "%bl",  "%cl",  "%dl", "%sil", "%dil", "%bpl", "%spl", "%r8b", "%r9b" },
    { "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi", "%rbp", "%rsp",  "%r8", "%r9"  }
 };
-enum regs results[6] = { DI, SI, DX, CX, R8, R9 };
+enum regs args[6] = { DI, SI, DX, CX, R8, R9 };
 
 void label(int i) {
    gen(".L%d:\n", i);
@@ -86,14 +86,14 @@ void load(enum regs R, opts x) {
                // TODO: this does not work with global variables
                t = trans(s->u.eVariable.type);
                gen("\tmov%c\t%d(%%rbp), %s\n", cmd(t), s->u.eVariable.offset, reg(R, t));
-               //asm("int $3"); // Breakpoint
                break;
             case ENTRY_PARAMETER:
                // TODO: by val vs by ref
-               // TODO: first 6 parameters are on the registers
                t = trans(s->u.eParameter.type);
-               gen("\tmov%c\t%d(%%rbp), %s\n", cmd(t), s->u.eParameter.offset, reg(R, t));
-               //asm("int $3"); // Breakpoint
+               if (s->u.eParameter.offset < 6) // in register
+                  gen("\tmov%c\t%s, %s\n", cmd(t), reg(args[s->u.eParameter.offset], t), reg(R, t));
+               else // in stack
+                  gen("\tmov%c\t%d(%%rbp), %s\n", cmd(t), s->u.eParameter.offset, reg(R, t));
                break;
             case ENTRY_CONSTANT:
                t = trans(s->u.eConstant.type);
@@ -150,6 +150,13 @@ void store(enum regs R, opts x) {
                t = trans(s->u.eTemporary.type);
                gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eTemporary.offset);
                break;
+            case ENTRY_PARAMETER:
+               t = trans(s->u.eTemporary.type);
+               if (s->u.eParameter.offset < 6) // in register
+                  gen("\tmov%c\t%s, %s\n", cmd(t), reg(R, t), reg(args[s->u.eParameter.offset], t));
+               else // in stack
+                  gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eParameter.offset);
+               break;
             default:
                break;
          }
@@ -187,12 +194,14 @@ void TG_quad(immType q) {
    int cnt = 0;
    static int parcnt = 0;
    static opts ret;
+   static SymbolEntry *currentFunc = NULL;
 
    switch (q.op) {
       case UNIT:
          gen("\t.globl\t%s\n", q.x.content.variable->id);
          gen("\t.type\t%s, @function\n", q.x.content.variable->id);
          gen("%s:\n", q.x.content.variable->id);
+         currentFunc = q.x.content.variable;
          for (s = q.x.scope->entries; s != NULL; s = s->nextInScope) {
             if (s->entryType != ENTRY_VARIABLE && s->entryType != ENTRY_TEMPORARY)
                continue;
@@ -246,7 +255,7 @@ void TG_quad(immType q) {
       case PAR:
          switch (q.y.content.mode) {
             case PASS_BY_VALUE:
-               load(results[parcnt], q.x); // TODO: This only works for 1-6th argument
+               load(args[parcnt], q.x); // TODO: This only works for 1-6th argument
                break;
             case PASS_BY_REFERENCE:
                break;
@@ -261,6 +270,13 @@ void TG_quad(immType q) {
          if (!equalType(q.z.content.variable->u.eFunction.resultType, typeVoid))
             store(AX, ret);
          parcnt = 0;
+         break;
+      case RET:
+         gen("\tjmp\t.%s\n", currentFunc->id);
+         break;
+      case RETV:
+         store(AX, q.x);
+         gen("\tjmp\t.%s\n", currentFunc->id);
          break;
       default:
          break;

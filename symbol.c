@@ -421,19 +421,38 @@ SymbolEntry * newParameter (const char * name, Type type,
     return NULL;
 }
 
-static unsigned int fixOffset (SymbolEntry * args)
+// x86_64 specific
+/* Fixes offsets for arguments 7-.. which are placed in the stack */
+static unsigned int fixOffsetStack (SymbolEntry * args)
 {
     if (args == NULL)
         return 0;
     else {
-        unsigned int rest = fixOffset(args->u.eParameter.next);
+        unsigned int rest = fixOffsetStack(args->u.eParameter.next);
         
         args->u.eParameter.offset = START_POSITIVE_OFFSET + rest;
         if (args->u.eParameter.mode == PASS_BY_REFERENCE)
-            return rest + 2;
+            return rest + 8; // Pointer size: 8 bytes (64 bits)
         else
             return rest + sizeOfType(args->u.eParameter.type);
     }
+}
+
+// x86_64 specific
+/* Fixes offsets for all arguments.
+ * Arguments 0-5 have offsets 0-5 respectively denoting
+ * their placement in the registers. */
+void fixOffset(SymbolEntry *args)
+{
+   int c;
+   for (c = 0; args; c++, args = args->u.eParameter.next) {
+      if (c < 6)
+         args->u.eParameter.offset = c;
+      else {
+         fixOffsetStack(args);
+         break;
+      }
+   }
 }
 
 void forwardFunction (SymbolEntry * f)
