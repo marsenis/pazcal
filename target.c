@@ -98,8 +98,8 @@ Type getVarType(opts x) {
 }
 
 void TG_Preamble() {
-   gen("\t.file \"%s\"\n", filename);
-   gen("\t.section .rodata\n");
+   gen("\t.file\t\"%s\"\n", filename);
+   //gen("\t.section\t.rodata\n");
 }
 
 void TG_StringConst(char s[], int id) {
@@ -122,9 +122,13 @@ void load(enum regs R, opts x) {
          s = x.content.variable;
          switch (s->entryType) {
             case ENTRY_VARIABLE:
-               // TODO: this does not work with global variables
                t = trans(s->u.eVariable.type);
-               gen("\tmov%c\t%d(%%rbp), %s\n", cmd(t), s->u.eVariable.offset, reg(R, t));
+
+               if (s->nestingLevel == 2) // Global Variable
+                  gen("\tmov%c\t%s(%%rip), %s\n", cmd(t), s->id, reg(R, t));
+               else // Local Variable
+                  gen("\tmov%c\t%d(%%rbp), %s\n", cmd(t), s->u.eVariable.offset, reg(R, t));
+
                break;
             case ENTRY_PARAMETER:
                // TODO: by val vs by ref
@@ -181,15 +185,19 @@ void store(enum regs R, opts x) {
                internal("\rtarget.c:[store]: cannot store on a constant");
                break;
             case ENTRY_VARIABLE:
-               // TODO: this does not work for global variables
                t = trans(s->u.eVariable.type);
-               gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eVariable.offset);
+
+               if (s->nestingLevel == 2) // Global Variable
+                  gen("\tmov%c\t%s, %s(%%rip)\n", cmd(t), reg(R, t), s->id);
+               else // Local Variable
+                  gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eVariable.offset);
                break;
             case ENTRY_TEMPORARY:
                t = trans(s->u.eTemporary.type);
                gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eTemporary.offset);
                break;
             case ENTRY_PARAMETER:
+               // TODO: by reference arguments
                t = trans(s->u.eTemporary.type);
                //if (s->u.eParameter.offset < 6) // in register
                //   gen("\tmov%c\t%s, %s\n", cmd(t), reg(R, t), reg(args[s->u.eParameter.offset], t));
@@ -345,12 +353,56 @@ void TG_quad(immType q) {
    }
 }
 
+void initGlobal(immType q) {
+   SymbolEntry *s;
+
+   if (q.op != ASG)
+      internal("[target.c]:TG_Generate: Found non assignment command in global scope");
+   if (q.z.type != VAR)
+      internal("[target.c]:TG_Generate: Assignment to non-variable in global scope");
+   if (q.x.type != VAR && q.x.content.variable->entryType != ENTRY_CONSTANT)
+      internal("[target.c]:TG_Generate: rvalue in global initialization is not a constant");
+
+   s = q.z.content.variable;
+
+   gen("\t.globl\t%s\n", s->id);
+   gen("\t.data\n");
+   //gen("\t.align\t4\n");
+   gen("\t.type\t%s, @object\n", s->id);
+   gen("\t.size\t%s, %d\n", s->id, sizeOfType(getSymType(s)));
+   gen("%s:\n", s->id);
+
+   s = q.x.content.variable;
+   switch (s->u.eConstant.type->kind) {
+      case TYPE_INTEGER:
+         gen("\t.long\t%d\n", s->u.eConstant.value.vInteger);
+         break;
+      case TYPE_CHAR:
+         gen("\t.byte\t%d\n", s->u.eConstant.value.vChar);
+         break;
+      case TYPE_BOOLEAN:
+         gen("\t.byte\t%d\n", s->u.eConstant.value.vBoolean);
+         break;
+      case TYPE_REAL:
+         break;
+      default:
+         internal("[target.c]:initGlobal: invalid type in global variable initialization");
+   }
+}
+
 void TG_Generate() {
    int i;
 
+   // Global variables: allocation and initialization
+   for (i = 1; i <= immCurrentPos; i++) {
+      if (immCode[i].op == UNIT) break;
+      initGlobal(immCode[i]);
+   }
+
    gen("\t.text\n");
 
-   for (i = 1; i <= immCurrentPos; i++) {
+   // Code for functions
+   for (; i <= immCurrentPos; i++) {
       label(i);
       TG_quad(immCode[i]); 
    }

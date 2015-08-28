@@ -12,4 +12,5 @@ PROGRAM functions() {
    p = true;
    q = false;
    p = f(f(p || q));
+   WRITESPLN(p, q);
 }
