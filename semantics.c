@@ -484,6 +484,15 @@ rlvalue genCodeBooleanExpr(rlvalue x, SymbolEntry *p) {
 }
 
 void genCodeWrite(rlvalue x, bool firstWriteArgument, bool format, int writeType, rlvalue *w, rlvalue *d) {
+   SymbolEntry *p;
+
+   // Backpatch expr in case of boolean x
+   if (equalType(x.t, typeBoolean)) {
+      p = newTemporary(typeBoolean);
+      rlvalue r = genCodeBooleanExpr(x, p);
+      backpatch(r.Next, nextQuad());
+   }
+
    // Should put a space between the arguments printed
    if (!firstWriteArgument && writeType >= 2) {
       genQuad(PAR, Var(SPACE), Mode(PASS_BY_VALUE), EMT);
@@ -494,12 +503,9 @@ void genCodeWrite(rlvalue x, bool firstWriteArgument, bool format, int writeType
    if (!arithmeticType(x.t) && !equalType(x.t, typeBoolean) && !equalType(typeIArray(typeChar), x.t))
       error("non basic type (or string) given to a write command");
       
-   if (equalType(x.t, typeBoolean)) {
-      SymbolEntry *p = newTemporary(typeBoolean);
-      rlvalue r = genCodeBooleanExpr(x, p);
-      backpatch(r.Next, nextQuad());
+   if (equalType(x.t, typeBoolean))
       genQuad(PAR, Var(p), Mode(PASS_BY_VALUE), EMT);
-   } else
+   else
       genQuad(PAR, Var(x.Place), Mode(PASS_BY_VALUE), EMT);
 
    if (format)

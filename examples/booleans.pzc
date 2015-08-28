@@ -1,5 +1,5 @@
 FUNC bool f(int i, bool p) {
-   return (i >= 0) and (i < 100) or not p;
+   return ( (i >= 0) && (i < 100) ) || !p;
 }
 
 PROGRAM test() {
@@ -10,5 +10,7 @@ PROGRAM test() {
 
    //k = (a > b) ||   [   (a <= c) && x && not y  ]    ||   (k and !l);
    //
+   WRITESPLN(i, p);
    x = f(i, p) || p;
+   WRITELN(x);
 }
