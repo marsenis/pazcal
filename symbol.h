@@ -44,7 +44,7 @@ typedef enum { false=0, true=1 } bool;
    ------------ Ορισμός σταθερών του πίνακα συμβόλων -------------------
    --------------------------------------------------------------------- */
 
-#define START_POSITIVE_OFFSET 8     /* Αρχικό θετικό offset στο Ε.Δ.   */
+#define START_POSITIVE_OFFSET 16//8     /* Αρχικό θετικό offset στο Ε.Δ.   */
 #define START_NEGATIVE_OFFSET 0     /* Αρχικό αρνητικό offset στο Ε.Δ. */
 
 
@@ -172,6 +172,7 @@ struct SymbolEntry_tag {
       struct {                                /****** Παράμετρος *******/
          Type          type;                  /* Τύπος                 */
          int           offset;                /* Offset στο Ε.Δ.       */
+         int           position;              /* it's the "position"-th parameter */
          PassMode      mode;                  /* Τρόπος περάσματος     */
          SymbolEntry * next;                  /* Επόμενη παράμετρος    */
       } eParameter;
@@ -252,6 +253,7 @@ unsigned int  sizeOfType         (Type type);
 bool          equalType          (Type type1, Type type2);
 void          printType          (Type type);
 void          printMode          (PassMode mode);
+Type          getSymType         (SymbolEntry *s);
 
 // Added by marsenis
 char* newConstName();

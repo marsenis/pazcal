@@ -1,4 +1,6 @@
+FUNC int f(int x) { return x MOD 2; }
+
 PROGRAM main() {
    int x = READ_INT();
-   WRITELN(x MOD 2);
+   WRITELN(f(x));
 }

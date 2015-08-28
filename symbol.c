@@ -385,11 +385,14 @@ SymbolEntry * newParameter (const char * name, Type type,
                 type->refCount++;
                 e->u.eParameter.mode = mode;
                 e->u.eParameter.next = NULL;
+                e->u.eParameter.position = 0;
             }
             if (f->u.eFunction.lastArgument == NULL)
                 f->u.eFunction.firstArgument = f->u.eFunction.lastArgument = e;
             else {
                 f->u.eFunction.lastArgument->u.eParameter.next = e;
+                e->u.eParameter.position =
+                  f->u.eFunction.lastArgument->u.eParameter.position + 1;
                 f->u.eFunction.lastArgument = e;
             }
             return e;            
@@ -423,12 +426,12 @@ SymbolEntry * newParameter (const char * name, Type type,
 
 // x86_64 specific
 /* Fixes offsets for arguments 7-.. which are placed in the stack */
-static unsigned int fixOffsetStack (SymbolEntry * args)
+static unsigned int fixOffset(SymbolEntry * args)
 {
     if (args == NULL)
         return 0;
     else {
-        unsigned int rest = fixOffsetStack(args->u.eParameter.next);
+        unsigned int rest = fixOffset(args->u.eParameter.next);
         
         args->u.eParameter.offset = START_POSITIVE_OFFSET + rest;
         if (args->u.eParameter.mode == PASS_BY_REFERENCE)
@@ -442,6 +445,7 @@ static unsigned int fixOffsetStack (SymbolEntry * args)
 /* Fixes offsets for all arguments.
  * Arguments 0-5 have offsets 0-5 respectively denoting
  * their placement in the registers. */
+/*
 void fixOffset(SymbolEntry *args)
 {
    int c;
@@ -454,6 +458,7 @@ void fixOffset(SymbolEntry *args)
       }
    }
 }
+*/
 
 void forwardFunction (SymbolEntry * f)
 {
@@ -642,7 +647,8 @@ unsigned int sizeOfType (Type type)
         case TYPE_REAL:
             return 10;
         case TYPE_ARRAY:
-            return type->size * sizeOfType(type->refType);
+            return 8;
+            //return type->size * sizeOfType(type->refType);
     }
     return 0;
 }
@@ -723,4 +729,17 @@ void printMode (PassMode mode)
 {
     if (mode == PASS_BY_REFERENCE)
         printf("var ");
+}
+
+Type getSymType(SymbolEntry *s) {
+   switch (s->entryType) {
+      case ENTRY_VARIABLE: return s->u.eVariable.type;
+      case ENTRY_CONSTANT: return s->u.eConstant.type;
+      case ENTRY_PARAMETER: return s->u.eParameter.type;
+      case ENTRY_TEMPORARY: return s->u.eTemporary.type;
+      default:
+         internal("\r[symbol.c]:getSymType: invalid Symbol Entry Type\n");
+         break;
+   }
+   return NULL;
 }

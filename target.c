@@ -1,3 +1,4 @@
+#include <string.h>
 #include "target.h"
 #include "intermediateCode.h"
 #include "symbol.h"
@@ -28,6 +29,10 @@ char regName[DATATYPES][REGS][5] =
    { "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi", "%rbp", "%rsp",  "%r8", "%r9"  }
 };
 enum regs args[6] = { DI, SI, DX, CX, R8, R9 };
+//int revArgs[REGS] = {-1, -1, 3, 2, 1, 0, -1, -1, 4, 5 };
+//SymbolEntry *argsSymEntry[6];  /* Symbol Table entries for the first 6 arguments */
+
+SymbolEntry *currentFunc = NULL;;
 
 void label(int i) {
    gen(".L%d:\n", i);
@@ -54,8 +59,42 @@ enum dataTypes trans(Type t) {
 char *reg(enum regs R, enum dataTypes t) {
    return regName[t][R];
 }
+
 char cmd(enum dataTypes t) {
    return cmdModifiers[t];
+}
+
+char *arithmCmd(enum opType op) {
+   switch (op) {
+      case '+': return "add";
+      case '-': return "sub";
+      case '*': return "imul";
+      default: return "";
+   }
+}
+
+char *compCmd(enum opType op) {
+   switch (op) {
+      case '=': return "e";
+      case '<': return "l";
+      case ',': return "le";
+      case '>': return "g";
+      case '.': return "ge";
+      case '!': return "ne";
+      default:
+         internal("\rtarget.c:[compCmd]: Invalid comparison operator");
+         return "";
+   }
+}
+
+Type getVarType(opts x) {
+   switch (x.type) {
+      case CONST: return typeInteger;
+      case VAR:   return getSymType(x.content.variable);
+      default:
+         internal("[target.c]:getVarSize: invalid opts arguments");
+   }
+   return NULL;
 }
 
 void TG_Preamble() {
@@ -90,10 +129,10 @@ void load(enum regs R, opts x) {
             case ENTRY_PARAMETER:
                // TODO: by val vs by ref
                t = trans(s->u.eParameter.type);
-               if (s->u.eParameter.offset < 6) // in register
-                  gen("\tmov%c\t%s, %s\n", cmd(t), reg(args[s->u.eParameter.offset], t), reg(R, t));
-               else // in stack
-                  gen("\tmov%c\t%d(%%rbp), %s\n", cmd(t), s->u.eParameter.offset, reg(R, t));
+               //if (s->u.eParameter.offset < 6) // in register
+               //   gen("\tmov%c\t%s, %s\n", cmd(t), reg(args[s->u.eParameter.offset], t), reg(R, t));
+               //else // in stack
+               gen("\tmov%c\t%d(%%rbp), %s\n", cmd(t), s->u.eParameter.offset, reg(R, t));
                break;
             case ENTRY_CONSTANT:
                t = trans(s->u.eConstant.type);
@@ -152,10 +191,10 @@ void store(enum regs R, opts x) {
                break;
             case ENTRY_PARAMETER:
                t = trans(s->u.eTemporary.type);
-               if (s->u.eParameter.offset < 6) // in register
-                  gen("\tmov%c\t%s, %s\n", cmd(t), reg(R, t), reg(args[s->u.eParameter.offset], t));
-               else // in stack
-                  gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eParameter.offset);
+               //if (s->u.eParameter.offset < 6) // in register
+               //   gen("\tmov%c\t%s, %s\n", cmd(t), reg(R, t), reg(args[s->u.eParameter.offset], t));
+               //else // in stack
+               gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eParameter.offset);
                break;
             default:
                break;
@@ -166,57 +205,58 @@ void store(enum regs R, opts x) {
    }
 }
 
-char *arithmCmd(enum opType op) {
-   switch (op) {
-      case '+': return "add";
-      case '-': return "sub";
-      case '*': return "imul";
-      default: return "";
-   }
-}
-
-char *compCmd(enum opType op) {
-   switch (op) {
-      case '=': return "e";
-      case '<': return "l";
-      case ',': return "le";
-      case '>': return "g";
-      case '.': return "ge";
-      case '!': return "ne";
-      default:
-         internal("\rtarget.c:[compCmd]: Invalid comparison operator");
-         return "";
-   }
-}
 void TG_quad(immType q) {
    SymbolEntry *s;
    enum dataTypes t;
-   int cnt = 0;
-   static int parcnt = 0;
+   int cnt = 0, i, size;
+   static int parcnt = 0, argStackSize = 0;
    static opts ret;
-   static SymbolEntry *currentFunc = NULL;
 
    switch (q.op) {
       case UNIT:
-         gen("\t.globl\t%s\n", q.x.content.variable->id);
-         gen("\t.type\t%s, @function\n", q.x.content.variable->id);
-         gen("%s:\n", q.x.content.variable->id);
          currentFunc = q.x.content.variable;
-         for (s = q.x.scope->entries; s != NULL; s = s->nextInScope) {
-            if (s->entryType != ENTRY_VARIABLE && s->entryType != ENTRY_TEMPORARY)
-               continue;
-            cnt += sizeOfType(s->u.eVariable.type); // TODO: a little hackish
-         }
-         cnt += 8; // Add 8 bytes for the bp pointer
+         gen("\t.globl\t%s\n", currentFunc->id);
+         gen("\t.type\t%s, @function\n", currentFunc->id);
+         gen("%s:\n", currentFunc->id);
+
+         /* Count how many bytes of stack to allocate */
+         cnt = 8; // Add 8 bytes for the bp pointer
+         for (s = q.x.scope->entries; s != NULL; s = s->nextInScope)
+            if (s->entryType == ENTRY_VARIABLE || s->entryType == ENTRY_TEMPORARY)
+               cnt += sizeOfType(getSymType(s));
+
          gen("\tpushq\t%%rbp\n");
          gen("\tmovq\t%%rsp, %%rbp\n");
          gen("\tsubq\t$%d,%%rsp\n", cnt);
+
+         /* Save arguments into the stack  */
+         /*
+         for (i = 0, s = currentFunc->u.eFunction.firstArgument;
+              s != NULL;
+              i++, s = s->u.eParameter.next)
+            if (i < 6)
+               store(args[i], Var(s));
+         */
+         
+         /*
+         if (currentFunc->u.eFunction.firstArgument)
+            argStackSize = currentFunc->u.eFunction.firstArgument->u.eParameter.offset
+                         + sizeOfType(currentFunc->u.eFunction.firstArgument->u.eParameter.type);
+         else
+            argStackSize = 0;
+         */
          break;
       case ENDU:
-         gen(".%s:\n", q.x.content.variable->id);
-         gen("\tmovq\t%%rbp, %%rsp\n");
-         gen("\tpopq\t%%rbp\n");
-         gen("\tret\n");
+         if (!strcmp(q.x.content.variable->id, "main")) {
+           gen("\tmovl\t$0, %%edi\n");
+           gen("\tcall\texit\n");
+         } else {
+            gen(".%s:\n", q.x.content.variable->id);
+            gen("\tmovq\t%%rbp, %%rsp\n");
+            gen("\tpopq\t%%rbp\n");
+            //gen("\tsubl\t$%d, %%esp\n", argStackSize);
+            gen("\tret\n");
+         }
          break;
       case ASG:
          load(AX, q.x);
@@ -227,7 +267,7 @@ void TG_quad(immType q) {
          load(BX, q.y);
 
          s = q.z.content.variable;
-         t = trans(s->u.eVariable.type); // TODO: a little hackish
+         t = trans(getSymType(s));
 
          gen("\t%s%c\t%s, %s\n", arithmCmd(q.op), cmd(t), reg(BX, t), reg(AX, t));
 
@@ -235,12 +275,16 @@ void TG_quad(immType q) {
          break;
       case '/': case '%':
          gen("\tpushq\t%%rdx\n"); // Save %rdx
+
          load(AX, q.x);
          load(BX, q.y);
+
          gen("\tcqto\n");        // Sign extend %rax to %rdx:%rax
          gen("\tidivq\t%%rbx\n");
+
          if (q.op == '/') store(AX, q.z);
          else             store(DX, q.z);
+
          gen("\tpopq\t%%rdx\n");  // Restore %rdx
          break;
       case '=': case '<': case ',': case '>': case '.': case '!':
@@ -249,13 +293,29 @@ void TG_quad(immType q) {
          gen("\tcmpq\t%%rbx, %%rax\n");
          gen("\tj%s\t.L%d\n", compCmd(q.op), q.z.content.label);
          break;
+      case IFB:
+         load(AX, q.x);
+         gen("\ttestb\t%s, %s\n", reg(AX, BOOL), reg(AX, BOOL));
+         gen("\tjnz\t.L%d\n", q.z.content.label);
+         break;
       case JUMP:
          gen("\tjmp\t.L%d\n", q.z.content.label);
          break;
       case PAR:
          switch (q.y.content.mode) {
             case PASS_BY_VALUE:
-               load(args[parcnt], q.x); // TODO: This only works for 1-6th argument
+               t = trans(getVarType(q.x));
+
+               size = sizeOfType(getVarType(q.x));
+               argStackSize += size;
+
+               gen("\tsubq\t$%d, %%rsp\n", size);
+
+               if (parcnt < 6)
+                  load(args[parcnt], q.x);
+
+               load(AX, q.x);
+               gen("\tmov%c\t%s, (%%rsp)\n", cmd(t), reg(AX, t));
                break;
             case PASS_BY_REFERENCE:
                break;
@@ -269,13 +329,15 @@ void TG_quad(immType q) {
          gen("\tcall\t%s\n", q.z.content.variable->id);
          if (!equalType(q.z.content.variable->u.eFunction.resultType, typeVoid))
             store(AX, ret);
+         gen("\taddq\t$%d, %%rsp\n", argStackSize);
+         argStackSize = 0;
          parcnt = 0;
          break;
       case RET:
          gen("\tjmp\t.%s\n", currentFunc->id);
          break;
       case RETV:
-         store(AX, q.x);
+         load(AX, q.x);
          gen("\tjmp\t.%s\n", currentFunc->id);
          break;
       default:
