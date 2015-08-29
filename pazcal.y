@@ -738,7 +738,7 @@ stmt : ';'
              genQuad(PAR, Cnst(1),      Mode(PASS_BY_VALUE), EMT);
              genQuad(CALL, EMT, EMT, Var(lookupEntry("WRITE_CHAR", LOOKUP_ALL_SCOPES, true)));
           }
-       } ';'
+       } ';' { $$.Place = NULL; }
      | block { $$ = $1; };
 
 pm                : "++" { $$ = '+'; } | "--" { $$ = '-'; };
@@ -878,14 +878,14 @@ int main(int argc, char *argv[]) {
 
    // Temporary
    char cmd[100];
+   /*
    sprintf(cmd, "grep . %s\n", asmfilename);
    printf("\t--- TARGET CODE ---\n");
    system(cmd);
-
-   /*
-   sprintf(cmd, "cp %s pazcallib/target.s && cd pazcallib && make && ./target && cd ..\n", asmfilename);
-   system(cmd);
    */
+
+   sprintf(cmd, "cp %s pazcallib/target.s && cd pazcallib && make && cd ..\n", asmfilename);
+   system(cmd);
 
    return 0;
 }

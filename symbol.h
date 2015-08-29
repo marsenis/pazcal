@@ -249,7 +249,7 @@ Type          typeArray          (RepInteger size, Type refType);
 Type          typeIArray         (Type refType);
 Type          typePointer        (Type refType);
 void          destroyType        (Type type);
-unsigned int  sizeOfType         (Type type);
+unsigned int  sizeOfType         (Type type, bool fullArray);
 bool          equalType          (Type type1, Type type2);
 void          printType          (Type type);
 void          printMode          (PassMode mode);

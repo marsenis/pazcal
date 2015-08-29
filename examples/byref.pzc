@@ -1,0 +1,14 @@
+PROC swap(int &x, int &y) {
+   int tmp;
+   tmp = x;
+   x = y;
+   y = tmp;
+}
+
+PROGRAM test() {
+   int x = READ_INT(), y = READ_INT();
+
+   swap(x, y);
+
+   WRITESPLN(x, y);
+}

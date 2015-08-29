@@ -19,14 +19,14 @@ int newStringID() { return StringID++; }
 enum dataTypes { INT, CHAR, BOOL, POINTER, REAL };
 char cmdModifiers[] = { 'l', 'b', 'b', 'q', 'd' };
 
-#define REGS 10
-enum regs { AX, BX, CX, DX, SI, DI, BP, SP, R8, R9 };
+#define REGS 13
+enum regs { AX, BX, CX, DX, SI, DI, BP, SP, R8, R9, R10, R13, R14 };
 char regName[DATATYPES][REGS][5] =
 {
-   { "%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi", "%ebp", "%esp", "%r8d", "%r9d" },
-   {  "%al",  "%bl",  "%cl",  "%dl", "%sil", "%dil", "%bpl", "%spl", "%r8b", "%r9b" },
-   {  "%al",  "%bl",  "%cl",  "%dl", "%sil", "%dil", "%bpl", "%spl", "%r8b", "%r9b" },
-   { "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi", "%rbp", "%rsp",  "%r8", "%r9"  }
+   { "%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi", "%ebp", "%esp", "%r8d", "%r9d", "%r10d", "%r13d", "%r14d"},
+   {  "%al",  "%bl",  "%cl",  "%dl", "%sil", "%dil", "%bpl", "%spl", "%r8b", "%r9b", "%r10b", "%r13b", "%r14b"},
+   {  "%al",  "%bl",  "%cl",  "%dl", "%sil", "%dil", "%bpl", "%spl", "%r8b", "%r9b", "%r10b", "%r13b", "%r14b"},
+   { "%rax", "%rbx", "%rcx", "%rdx", "%rsi", "%rdi", "%rbp", "%rsp",  "%r8",  "%r9",  "%r10",  "%r13",  "%r14"}
 };
 enum regs args[6] = { DI, SI, DX, CX, R8, R9 };
 //int revArgs[REGS] = {-1, -1, 3, 2, 1, 0, -1, -1, 4, 5 };
@@ -38,7 +38,7 @@ void label(int i) {
    gen(".L%d:\n", i);
 }
 
-/* Translates a high level type to a low level dataType */
+/* Translates a high level type to a low level dataTypes */
 enum dataTypes trans(Type t) {
    if (equalType(t, typeInteger))
       return INT;
@@ -46,7 +46,7 @@ enum dataTypes trans(Type t) {
       return CHAR;
    else if (equalType(t, typeBoolean))
       return BOOL;
-   else if (t->kind == TYPE_ARRAY || t->kind == TYPE_IARRAY)
+   else if (t->kind == TYPE_ARRAY || t->kind == TYPE_IARRAY || t->kind == TYPE_POINTER)
       return POINTER;
    else if (equalType(t, typeReal))
       return REAL;
@@ -89,10 +89,11 @@ char *compCmd(enum opType op) {
 
 Type getVarType(opts x) {
    switch (x.type) {
-      case CONST: return typeInteger;
-      case VAR:   return getSymType(x.content.variable);
+      case CONST:   return typeInteger;
+      case VAR:     return getSymType(x.content.variable);
+      case REF_VAR: return x.content.variable->u.eTemporary.type->refType;
       default:
-         internal("[target.c]:getVarSize: invalid opts arguments");
+         internal("\r[target.c]:getVarType: invalid opts arguments");
    }
    return NULL;
 }
@@ -108,14 +109,13 @@ void TG_StringConst(char s[], int id) {
 
 void load(enum regs R, opts x) {
    // TODO: SIGN EXTEND!
+   // TODO: REALs
    SymbolEntry *s;
-   enum dataTypes t, t1, t2, t3, t4;
-   char *r[10];
-   char *m;
+   enum dataTypes t;
 
    switch (x.type) {
       case CONST: // arithmetic constant
-         t = trans(typeInteger);
+         t = INT;
          gen("\tmov%c\t$%d, %s\n", cmd(t), x.content.constant, reg(R, t)); 
          break;
       case VAR:  // Symbol table entry (variable, constant, function, parameter, temporary)
@@ -126,17 +126,18 @@ void load(enum regs R, opts x) {
 
                if (s->nestingLevel == 2) // Global Variable
                   gen("\tmov%c\t%s(%%rip), %s\n", cmd(t), s->id, reg(R, t));
-               else // Local Variable
+               else                      // Local Variable
                   gen("\tmov%c\t%d(%%rbp), %s\n", cmd(t), s->u.eVariable.offset, reg(R, t));
 
                break;
             case ENTRY_PARAMETER:
-               // TODO: by val vs by ref
                t = trans(s->u.eParameter.type);
-               //if (s->u.eParameter.offset < 6) // in register
-               //   gen("\tmov%c\t%s, %s\n", cmd(t), reg(args[s->u.eParameter.offset], t), reg(R, t));
-               //else // in stack
-               gen("\tmov%c\t%d(%%rbp), %s\n", cmd(t), s->u.eParameter.offset, reg(R, t));
+               if (s->u.eParameter.mode == PASS_BY_VALUE) // Pass by value
+                  gen("\tmov%c\t%d(%%rbp), %s\n", cmd(t), s->u.eParameter.offset, reg(R, t));
+               else {                                     // Pass by reference
+                  gen("\tmov%c\t%d(%%rbp), %%r10\n", cmd(POINTER), s->u.eParameter.offset);
+                  gen("\tmov%c\t(%%r10), %s\n", cmd(t), reg(R, t));
+               }
                break;
             case ENTRY_CONSTANT:
                t = trans(s->u.eConstant.type);
@@ -162,34 +163,88 @@ void load(enum regs R, opts x) {
             default:
                break;
          }
-         
+         break;
+      case REF_VAR:
+         s = x.content.variable;
+
+         if (s->entryType != ENTRY_TEMPORARY)
+            internal("\r[target.c]:load: x in [x] is not a temporary variable");
+
+         t = trans(s->u.eTemporary.type->refType);
+
+         load(R10, Var(s));
+         gen("\tmov%c\t(%%r10), %s\n", cmd(t), reg(R, t));
+         break;
       default:
          break;
    }
+}
 
+void loadAddr(enum regs R, opts x) {
+   SymbolEntry *s;
+
+   switch (x.type) {
+      case CONST:
+         internal("\r[target.c]:loadAddr: Cannot load the address of a constant (1)");
+         break;
+      case VAR:
+         s = x.content.variable;
+         switch (s->entryType) {
+            case ENTRY_CONSTANT:
+               internal("\r[target.c]:loadAddr: Cannot load the address of a constant (2)");
+               break;
+            case ENTRY_VARIABLE:
+               if (s->nestingLevel == 2) // Global Variable
+                  gen("\tleaq\t$%s(%%rip), %s\n", s->id, reg(R, POINTER));
+               else                      // Local Variable
+                  gen("\tleaq\t%d(%%rbp), %s\n", s->u.eVariable.offset, reg(R, POINTER));
+               break;
+            case ENTRY_TEMPORARY:
+               gen("\tleaq\t%d(%%rbp), %s\n", s->u.eTemporary.offset, reg(R, POINTER));
+               break;
+            case ENTRY_PARAMETER:
+               if (s->u.eParameter.mode == PASS_BY_VALUE) // Pass by value
+                  gen("\tleaq\t%d(%%rbp), %s\n", s->u.eParameter.offset, reg(R, POINTER));
+               else                                       // Pass by reference
+                  gen("\tmovq\t%d(%%rbp), %s\n", s->u.eParameter.offset, reg(R, POINTER));
+               break;
+            default:
+               internal("\r[target.c]:loadAddr: Invalid entry type");
+               break;
+         }
+         break;
+      case REF_VAR:
+         s = x.content.variable;
+         load(R, Var(s));
+         break;
+      default:
+         internal("\r[target.c]:loadAddr: Cannot load the address of this object");
+         break;
+   }
 }
 
 void store(enum regs R, opts x) {
    // TODO: SIGN EXTEND!
+   // TODO: REALs
    SymbolEntry *s;
    enum dataTypes t;
 
    switch (x.type) {
       case CONST: // arithmetic constant
-         internal("\rtarget.c:[store]: cannot store on a constant");
+         internal("\rtarget.c:[store]: cannot store on a constant (1)");
          break;
       case VAR:  // Symbol table entry (variable, constant, function, parameter, temporary)
          s = x.content.variable;
          switch (s->entryType) {
             case ENTRY_CONSTANT:
-               internal("\rtarget.c:[store]: cannot store on a constant");
+               internal("\rtarget.c:[store]: cannot store on a constant (2)");
                break;
             case ENTRY_VARIABLE:
                t = trans(s->u.eVariable.type);
 
                if (s->nestingLevel == 2) // Global Variable
                   gen("\tmov%c\t%s, %s(%%rip)\n", cmd(t), reg(R, t), s->id);
-               else // Local Variable
+               else                      // Local Variable
                   gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eVariable.offset);
                break;
             case ENTRY_TEMPORARY:
@@ -197,16 +252,28 @@ void store(enum regs R, opts x) {
                gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eTemporary.offset);
                break;
             case ENTRY_PARAMETER:
-               // TODO: by reference arguments
-               t = trans(s->u.eTemporary.type);
-               //if (s->u.eParameter.offset < 6) // in register
-               //   gen("\tmov%c\t%s, %s\n", cmd(t), reg(R, t), reg(args[s->u.eParameter.offset], t));
-               //else // in stack
-               gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eParameter.offset);
+               t = trans(s->u.eParameter.type);
+               if (s->u.eParameter.mode == PASS_BY_VALUE) // Pass by value
+                  gen("\tmov%c\t%s, %d(%%rbp)\n", cmd(t), reg(R, t), s->u.eParameter.offset);
+               else {                                     // Pass by reference
+                  gen("\tmov%c\t%d(%%rbp), %%r10\n", cmd(POINTER), s->u.eParameter.offset);
+                  gen("\tmov%c\t%s, (%%r10)\n", cmd(t), reg(R, t));
+               }
                break;
             default:
                break;
          }
+         break;
+      case REF_VAR:
+         s = x.content.variable;
+
+         if (s->entryType != ENTRY_TEMPORARY)
+            internal("\r[target.c]:store: x in [x] is not a temporary variable");
+
+         t = trans(s->u.eTemporary.type->refType);
+
+         load(R10, Var(s));
+         gen("\tmov%c\t%s, (%%r10)\n", cmd(t), reg(R, t));
          break;
       default:
          break;
@@ -215,8 +282,10 @@ void store(enum regs R, opts x) {
 
 void TG_quad(immType q) {
    SymbolEntry *s;
+   void (*f)(enum regs, opts);
+   Type rt;
    enum dataTypes t;
-   int cnt = 0, i, size;
+   int cnt = 0, size;
    static int parcnt = 0, argStackSize = 0;
    static opts ret;
 
@@ -231,43 +300,49 @@ void TG_quad(immType q) {
          cnt = 8; // Add 8 bytes for the bp pointer
          for (s = q.x.scope->entries; s != NULL; s = s->nextInScope)
             if (s->entryType == ENTRY_VARIABLE || s->entryType == ENTRY_TEMPORARY)
-               cnt += sizeOfType(getSymType(s));
+               cnt += sizeOfType(getSymType(s), true);
 
          gen("\tpushq\t%%rbp\n");
          gen("\tmovq\t%%rsp, %%rbp\n");
          gen("\tsubq\t$%d,%%rsp\n", cnt);
 
-         /* Save arguments into the stack  */
-         /*
-         for (i = 0, s = currentFunc->u.eFunction.firstArgument;
-              s != NULL;
-              i++, s = s->u.eParameter.next)
-            if (i < 6)
-               store(args[i], Var(s));
-         */
-         
-         /*
-         if (currentFunc->u.eFunction.firstArgument)
-            argStackSize = currentFunc->u.eFunction.firstArgument->u.eParameter.offset
-                         + sizeOfType(currentFunc->u.eFunction.firstArgument->u.eParameter.type);
-         else
-            argStackSize = 0;
-         */
          break;
       case ENDU:
          if (!strcmp(q.x.content.variable->id, "main")) {
-           gen("\tmovl\t$0, %%edi\n");
-           gen("\tcall\texit\n");
+            gen("\tmovl\t$0, %%edi\n");
+            gen("\tcall\texit\n");
          } else {
             gen(".%s:\n", q.x.content.variable->id);
             gen("\tmovq\t%%rbp, %%rsp\n");
             gen("\tpopq\t%%rbp\n");
-            //gen("\tsubl\t$%d, %%esp\n", argStackSize);
             gen("\tret\n");
          }
          break;
       case ASG:
          load(AX, q.x);
+         store(AX, q.z);
+         break;
+      case ARRAY:
+         load(AX, q.y);
+         s = q.x.content.variable;
+
+         // Find the type of objects held in the array
+         rt = getSymType(s);
+         while (rt->kind == TYPE_ARRAY || rt->kind == TYPE_IARRAY)
+            rt = rt->refType;
+
+         gen("\tmovl\t$%d, %s\n", sizeOfType(rt, false), reg(CX, INT));
+         gen("\timul%c\t%s, %s\n", cmd(POINTER), reg(CX, POINTER), reg(AX, POINTER));
+
+         // Save CX
+         gen("\tpushq\t%s\n", reg(CX, POINTER));
+
+         loadAddr(CX, q.x);
+         gen("\tadd%c\t%s, %s\n", cmd(POINTER), reg(CX, POINTER), reg(AX, POINTER));
+
+         // Restore CX
+         gen("\tpopq\t%s\n", reg(CX, POINTER));
+
          store(AX, q.z);
          break;
       case '+': case '-': case '*':
@@ -310,11 +385,68 @@ void TG_quad(immType q) {
          gen("\tjmp\t.L%d\n", q.z.content.label);
          break;
       case PAR:
+         /* WRONG!!! */
+         /*
+         switch(q.y.content.mode) {
+            case PASS_BY_VALUE: case PASS_BY_REFERENCE:
+               if (q.x.type == CONST) { // Integer constant
+                  if (q.y.content.mode == PASS_BY_VALUE) {
+                     t = INT;
+                     size = 4;
+                     f = load;
+                  } else
+                     internal("\r[target.c]:TG_Quad: cannot pass integer constant by reference (1)");
+               } else if (q.x.type == VAR) {
+                  if (q.x.content.variable->entryType == ENTRY_CONSTANT) { // Int/Char/Bool/String Constant
+                     if (q.y.content.mode == PASS_BY_VALUE) {
+                        t = trans(getVarType(q.x));
+                        size = sizeOfType(getVarType(q.x), false);
+                        f = load;
+                     } else
+                        internal("\r[target.c]:TG_Quad: cannot pass integer constant by reference (2)");
+                  } else { // Varible, Temporary, Parameter
+                     rt = getSymType(q.x.content.variable);
+                     if (rt->kind == TYPE_ARRAY || rt->kind == TYPE_IARRAY) {
+                        t = POINTER;
+                        size = 8;
+                        f = loadAddr;
+                     } else if (q.y.content.mode == PASS_BY_VALUE) {
+                        t = trans(getVarType(q.x));
+                        size = sizeOfType(getVarType(q.x), false);
+                        f = load;
+                     } else {
+                        t = POINTER;
+                        size = 8;
+                        f = loadAddr;
+                     }
+                  }
+               } else if (q.x.type == REF_VAR) {
+                  if (q.y.content.mode == PASS_BY_VALUE) {
+                     t = trans(getVarType(q.x));
+                     size = sizeOfType(getVarType(q.x), false);
+                     f = load;
+                  } else {
+                     t = POINTER;
+                     size = 8;
+                     f = loadAddr;
+                  }
+               }
+
+               argStackSize += size;
+               gen("\tsubq\t$%d, %%rsp\n", size);
+
+               if (parcnt < 6)
+                  f(args[parcnt], q.x);
+
+               f(AX, q.x);
+               gen("\tmov%c\t%s, (%%rsp)\n", cmd(t), reg(AX, t));
+               break;
+            */
          switch (q.y.content.mode) {
             case PASS_BY_VALUE:
                t = trans(getVarType(q.x));
 
-               size = sizeOfType(getVarType(q.x));
+               size = sizeOfType(getVarType(q.x), false);
                argStackSize += size;
 
                gen("\tsubq\t$%d, %%rsp\n", size);
@@ -326,6 +458,16 @@ void TG_quad(immType q) {
                gen("\tmov%c\t%s, (%%rsp)\n", cmd(t), reg(AX, t));
                break;
             case PASS_BY_REFERENCE:
+               size = 8; // size of pointer
+               argStackSize += size;
+
+               gen("\tsubq\t$%d, %%rsp\n", size);
+
+               if (parcnt < 6)
+                  loadAddr(args[parcnt], q.x);
+
+               loadAddr(AX, q.x);
+               gen("\tmov%c\t%s, (%%rsp)\n", cmd(POINTER), reg(AX, POINTER));
                break;
             case PASS_RET:
                ret = q.x;
@@ -357,11 +499,11 @@ void initGlobal(immType q) {
    SymbolEntry *s;
 
    if (q.op != ASG)
-      internal("[target.c]:TG_Generate: Found non assignment command in global scope");
+      internal("\r[target.c]:TG_Generate: Found non assignment command in global scope");
    if (q.z.type != VAR)
-      internal("[target.c]:TG_Generate: Assignment to non-variable in global scope");
+      internal("\r[target.c]:TG_Generate: Assignment to non-variable in global scope");
    if (q.x.type != VAR && q.x.content.variable->entryType != ENTRY_CONSTANT)
-      internal("[target.c]:TG_Generate: rvalue in global initialization is not a constant");
+      internal("\r[target.c]:TG_Generate: rvalue in global initialization is not a constant");
 
    s = q.z.content.variable;
 
@@ -369,7 +511,7 @@ void initGlobal(immType q) {
    gen("\t.data\n");
    //gen("\t.align\t4\n");
    gen("\t.type\t%s, @object\n", s->id);
-   gen("\t.size\t%s, %d\n", s->id, sizeOfType(getSymType(s)));
+   gen("\t.size\t%s, %d\n", s->id, sizeOfType(getSymType(s), true));
    gen("%s:\n", s->id);
 
    s = q.x.content.variable;
@@ -386,7 +528,7 @@ void initGlobal(immType q) {
       case TYPE_REAL:
          break;
       default:
-         internal("[target.c]:initGlobal: invalid type in global variable initialization");
+         internal("\r[target.c]:initGlobal: invalid type in global variable initialization");
    }
 }
 

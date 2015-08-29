@@ -6,16 +6,17 @@
 #define MAX 10000
 
 #define EMT ((opts) { EMPTY, {0} })  // Empty Quad
-#define Var(X)  ( (opts) { VAR  , (contentType) { .variable = (X) } } )
-#define Cnst(X) ( (opts) { CONST, (contentType) { .constant = (X) } } )
-#define Mode(X) ( (opts) { PASS,  (contentType) { .mode = (X) } } )
-#define Lbl(X)  ( (opts) { LBL,   (contentType) { .label  = (X) } } )
+#define Var(X)  ( (opts) { VAR  ,   (contentType) { .variable = (X) } } )
+#define Cnst(X) ( (opts) { CONST,   (contentType) { .constant = (X) } } )
+#define Mode(X) ( (opts) { PASS,    (contentType) { .mode = (X) } } )
+#define Lbl(X)  ( (opts) { LBL,     (contentType) { .label  = (X) } } )
+#define Ref(X)  ( (opts) { REF_VAR, (contentType) { .variable = (X) } } )
 
 /* ------------------- Data structures ------------------- */
 // TODO: retv is depricated and should be replaced by assignment to $$
-enum opType { UNIT, ENDU, ARRAY, ASG, NEQ, LEQ, GEQ, IFB, JUMP, LABEL, JUMPL, CALL, PAR, RET, RETV };
+enum opType { UNIT, ENDU, ARRAY, ASG, NEQ, LEQ, GEQ, IFB, JUMP, LABEL, JUMPL, CALL, PAR, RET, RETV, OP_PLUS = '+', OP_MINUS = '-', OP_TIMES = '*', OP_DIV = '/', OP_MOD = '%', OP_EQ = '=', OP_LESS = '<', OP_LEQ = ',', OP_GR = '>', OP_GEQ = '.', OP_NOT = '!' };
 
-enum optsType { CONST, VAR, LBL, PASS, EMPTY };
+enum optsType { CONST, VAR, LBL, PASS, REF_VAR, EMPTY };
 
 typedef union {
    SymbolEntry *variable;

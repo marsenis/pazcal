@@ -12,6 +12,15 @@ int immCurrentPos = 0;
 int nextQuad() { return immCurrentPos + 1; }
 
 void genQuad(enum opType op, opts x, opts y, opts z) {
+   // !HACK!
+   // Fixed code generation when a pointer is used.
+   if (x.type == VAR && x.content.variable->entryType == ENTRY_TEMPORARY && getSymType(x.content.variable)->kind == TYPE_POINTER)
+      x = Ref(x.content.variable);
+   if (y.type == VAR && y.content.variable->entryType == ENTRY_TEMPORARY && getSymType(y.content.variable)->kind == TYPE_POINTER)
+      y = Ref(y.content.variable);
+   if (op != ARRAY && z.type == VAR && z.content.variable->entryType == ENTRY_TEMPORARY && getSymType(z.content.variable)->kind == TYPE_POINTER)
+      z = Ref(z.content.variable);
+
    immCurrentPos++;
    immCode[ immCurrentPos ] = (immType) { op, x, y, z };
 }
@@ -56,6 +65,7 @@ void backpatch(labelListType *l, int z) {
  */
 const char *fix(opts id) {
    char *tmp;
+   SymbolEntry *s;
 
    switch (id.type) {
       case CONST:
@@ -94,10 +104,10 @@ const char *fix(opts id) {
                break;
             case ENTRY_TEMPORARY:
                tmp = calloc(64, sizeof(char));
-               if ( id.content.variable->u.eTemporary.type->kind == TYPE_POINTER )
-                  sprintf(tmp, "[%s]", id.content.variable->id);
-               else
-                  sprintf(tmp, "$%d", id.content.variable->u.eTemporary.number);
+               //if ( id.content.variable->u.eTemporary.type->kind == TYPE_POINTER )
+               //   sprintf(tmp, "[%s]", id.content.variable->id);
+               //else
+               sprintf(tmp, "$%d", id.content.variable->u.eTemporary.number);
                return tmp;
                break;
             default:
@@ -117,10 +127,21 @@ const char *fix(opts id) {
             case PASS_RET: return "RET"; //return "by return value";
          }
          break;
+      case REF_VAR:
+         tmp = calloc(64, sizeof(char));
+         s = id.content.variable;
+         if (getSymType(s)->kind != TYPE_POINTER)
+            internal("\r[intermediateCode.c]:fix: x is not a pointer in operant [x]");
+         sprintf(tmp, "[%s]", s->id);
+         return tmp;
+         break;
       case EMPTY:
          return "*";
          break;
+      default:
+         break;
    }
+   return "";
 }
 
 void printImm() {
@@ -134,7 +155,7 @@ void printImm() {
             printf("%d: endu %s,-,-\n", i, fix(immCode[i].x));
             break;
          case ARRAY:
-            printf("%d: array %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), immCode[i].z.content.variable->id);
+            printf("%d: array %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z));
             break;
          case '=': case '>': case '<':
             printf("%d: %c, %s, %s, %s\n", i, immCode[i].op, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );

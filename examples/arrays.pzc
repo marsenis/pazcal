@@ -1,11 +1,18 @@
-const int A = 100, B = 200;
+const int A = 10, B = 20;
 
 PROGRAM test() {
    int a[A][B];
    int b[B][A];
    int c[A+B];
 
-   int i, j, k;
+   int i = 3, j = 4, k = 5;
 
-   WRITE(a[ b[i][j] ][ c[k] ]);
+   c[k] = i;
+   WRITELN("c[", k, "] = ", c[k]);
+   a[k][i] = 42;
+   WRITELN("a[", k, "][", i, "] = ", a[k][i]);
+   b[i][j] = k;
+   WRITELN("b[", i, "][", j, "] = ", b[i][j]);
+
+   WRITELN(a[ b[i][j] ][ c[k] ]);
 }

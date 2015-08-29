@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-g -Wall
+CFLAGS=-g -Wall -Wno-switch -Wno-unused-function
 
 pazcal: pazcal.lex.o pazcal.tab.o error.o general.o symbol.o symbolDebug.o semantics.o intermediateCode.o target.o
 		$(CC) $(CFLAGS) -o pazcal $+ -lfl

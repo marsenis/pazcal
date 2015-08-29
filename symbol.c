@@ -185,7 +185,7 @@ void openScope ()
 void closeScope ()
 {
     SymbolEntry * e = currentScope->entries;
-    Scope       * t = currentScope;
+    //Scope       * t = currentScope;
     
     while (e != NULL) {
         SymbolEntry * next = e->nextInScope;
@@ -240,7 +240,7 @@ SymbolEntry * newVariable (const char * name, Type type)
         e->entryType = ENTRY_VARIABLE;
         e->u.eVariable.type = type;
         type->refCount++;
-        currentScope->negOffset -= sizeOfType(type);
+        currentScope->negOffset -= sizeOfType(type, true);
         e->u.eVariable.offset = currentScope->negOffset;
     }
     return e;
@@ -437,7 +437,7 @@ static unsigned int fixOffset(SymbolEntry * args)
         if (args->u.eParameter.mode == PASS_BY_REFERENCE)
             return rest + 8; // Pointer size: 8 bytes (64 bits)
         else
-            return rest + sizeOfType(args->u.eParameter.type);
+            return rest + sizeOfType(args->u.eParameter.type, true);
     }
 }
 
@@ -507,7 +507,7 @@ SymbolEntry * newTemporary (Type type)
         e->entryType = ENTRY_TEMPORARY;
         e->u.eVariable.type = type;
         type->refCount++;
-        currentScope->negOffset -= sizeOfType(type);
+        currentScope->negOffset -= sizeOfType(type, true);
         e->u.eTemporary.offset = currentScope->negOffset;
         e->u.eTemporary.number = tempNumber++;
     }
@@ -630,7 +630,7 @@ void destroyType (Type type)
     }
 }
 
-unsigned int sizeOfType (Type type)
+unsigned int sizeOfType (Type type, bool fullArray)
 {
     switch (type->kind) {
         case TYPE_VOID:
@@ -647,8 +647,8 @@ unsigned int sizeOfType (Type type)
         case TYPE_REAL:
             return 10;
         case TYPE_ARRAY:
-            return 8;
-            //return type->size * sizeOfType(type->refType);
+            if (fullArray) return type->size * sizeOfType(type->refType, fullArray);
+            else return 8;
     }
     return 0;
 }
