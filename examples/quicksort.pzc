@@ -2,11 +2,11 @@ PROC quicksort(int a[], int n, int m)
 {
    int i, j, tmp;
 
-   if (n <= m) return;
+   if (n >= m) return;
 
    /* Code starts here */
-   i = m;
-   j = n;
+   i = n;
+   j = m;
 
    while (i <= j)
    {
@@ -23,11 +23,33 @@ PROC quicksort(int a[], int n, int m)
       }
    }
 
-   quicksort(a, m, j);
-   quicksort(a, i, n);
+   quicksort(a, n, j);
+   quicksort(a, i, m);
+}
+
+PROC print(char msg[], int n, int x[])
+{
+   WRITE(msg);
+   int i;
+   FOR (i, 0 TO n-1) {
+      if (i > 0)
+         WRITE(", ");
+      WRITE(x[i]);
+   }
+   WRITELN();
 }
 
 PROGRAM makis()
 {
-   WRITELN("Hello World");
+   int seed = 65;
+   int i, x[16];
+
+   FOR (i, 0 TO 15) {
+      seed = (seed *137 + 221 + i) MOD 101;
+      x[i] = seed;
+   }
+
+   print("Initial array: ", 16, x);
+   quicksort(x, 0, 15);
+   print("Sorted array:  ", 16, x);
 }

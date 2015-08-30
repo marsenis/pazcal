@@ -1,0 +1,22 @@
+int seed = 65, i = 0;
+
+FUNC int next() {
+   seed = (seed*137 + 221 + i) MOD 101;
+   i++;
+   return seed;
+}
+
+FUNC int gcd(int a, int b) {
+   if (b == 0) return a;
+   else return gcd(b, a MOD b);
+}
+
+PROGRAM GCD() {
+   int a, b;
+
+   FOR (i, 1 TO 10) {
+      a = next();
+      b = next();
+      WRITELN("gcd(", a, ", ", b, ") = ", gcd(a, b));
+   }
+}

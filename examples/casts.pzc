@@ -1,0 +1,7 @@
+PROGRAM casts() {
+   char x = -5;
+   int y = x;
+
+   WRITE_INT(x, 0);
+   WRITELN();
+}

@@ -36,11 +36,6 @@ PROGRAM bubbles()
       x[i] = seed;
    }
 
-   FOR (i, 0 TO 15) {
-      WRITE(x[i], " ");
-   }
-   WRITELN();
-
    print("Initial array: ", 16, x);
    bsort(16, x);
    print("Sorted array: ", 16, x);
