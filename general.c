@@ -24,6 +24,7 @@
    --------------------------------------------------------------------- */
 
 #include <stdlib.h>
+#include <string.h>
 
 #include "general.h"
 #include "error.h"
@@ -48,11 +49,22 @@ void delete (void * p)
       free(p);
 }
 
+void rm_filename_ext(const char *filename, char *base) {
+   const char *dot = strrchr(filename, '.');
+   if(!dot || dot == filename) {
+      strcpy(base, filename);
+      return;
+   }
+   strncpy(base, filename, dot - filename);
+   base[dot - filename] = '\0';
+}
+
 
 /* ---------------------------------------------------------------------
    ------- Αρχείο εισόδου του μεταγλωττιστή και αριθμός γραμμής --------
    --------------------------------------------------------------------- */
 
 const char * filename;
+FILE *immfile;
 FILE *asmfile;
 int linecount;

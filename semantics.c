@@ -599,7 +599,7 @@ void addLibraryFunctions() {
    p = newFunction("READ_STRING");
    openScope();
    newParameter("size", typeInteger, PASS_BY_VALUE, p);
-   newParameter("s", typeIArray(typeChar), PASS_BY_REFERENCE, p);
+   newParameter("s", typeIArray(typeChar), PASS_BY_VALUE, p);
    closeScope();
    endFunctionHeader(p, typeVoid);
 

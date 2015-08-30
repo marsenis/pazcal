@@ -32,6 +32,7 @@
 void * new    (size_t);
 void   delete (void *);
 
+void rm_filename_ext(const char *, char *);
 
 /* ---------------------------------------------------------------------
    -------------- Καθολικές μεταβλητές του μεταγλωττιστή ---------------
@@ -39,6 +40,7 @@ void   delete (void *);
 
 extern int linecount;
 extern const char * filename;
+extern FILE * immfile;
 extern FILE * asmfile;
 
 #endif

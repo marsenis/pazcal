@@ -158,6 +158,7 @@ REAL READ_REAL()
 void READ_STRING(int size, char s[])
 {
    fgets(s, size, stdin);
+   s[strlen(s)-1] = '\0';
 }
 
 REAL arctan(REAL r)

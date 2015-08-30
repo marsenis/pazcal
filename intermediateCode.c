@@ -6,6 +6,8 @@
 #include "symbol.h"
 #include "intermediateCode.h"
 
+#define gen(...) fprintf(immfile, __VA_ARGS__)
+
 immType immCode[MAX];
 int immCurrentPos = 0;
 
@@ -149,60 +151,60 @@ void printImm() {
    for (i=1; i<=immCurrentPos; i++) {
       switch (immCode[i].op) {
          case UNIT:
-            printf("%d: unit %s,-,-\n", i, fix(immCode[i].x));
+            gen("%d: unit %s,-,-\n", i, fix(immCode[i].x));
             break;
          case ENDU:
-            printf("%d: endu %s,-,-\n", i, fix(immCode[i].x));
+            gen("%d: endu %s,-,-\n", i, fix(immCode[i].x));
             break;
          case ARRAY:
-            printf("%d: array %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z));
+            gen("%d: array %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z));
             break;
          case '=': case '>': case '<':
-            printf("%d: %c, %s, %s, %s\n", i, immCode[i].op, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
+            gen("%d: %c, %s, %s, %s\n", i, immCode[i].op, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
             break;
          case '+': case '-': case '*': case '/': case '%':
-            printf("%d: %s := %s %c %s\n", i, fix(immCode[i].z), fix(immCode[i].x), immCode[i].op, fix(immCode[i].y) );
+            gen("%d: %s := %s %c %s\n", i, fix(immCode[i].z), fix(immCode[i].x), immCode[i].op, fix(immCode[i].y) );
             break;
          case ASG:
-            printf("%d: %s := %s\n", i, fix(immCode[i].z), fix(immCode[i].x));
+            gen("%d: %s := %s\n", i, fix(immCode[i].z), fix(immCode[i].x));
             break;
          case '!':
-            printf("%d: <>, %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
+            gen("%d: <>, %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
             break;
          case ',':
-            printf("%d: <=, %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
+            gen("%d: <=, %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
             break;
          case '.':
-            printf("%d: >=, %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
+            gen("%d: >=, %s, %s, %s\n", i, fix(immCode[i].x), fix(immCode[i].y), fix(immCode[i].z) );
             break;
          case IFB:
-            printf("%d: if %s then jump %s\n", i, fix(immCode[i].x), fix(immCode[i].z));
+            gen("%d: if %s then jump %s\n", i, fix(immCode[i].x), fix(immCode[i].z));
             break;
          case JUMP:
-            printf("%d: jump, -, -, %s\n", i, fix(immCode[i].z));
+            gen("%d: jump, -, -, %s\n", i, fix(immCode[i].z));
             break;
          case LABEL:
-            printf("%d: Label %s\n", i, fix(immCode[i].x));
+            gen("%d: Label %s\n", i, fix(immCode[i].x));
             break;
          case JUMPL:
-            printf("%d: Jump to label %s\n", i, fix(immCode[i].z));
+            gen("%d: Jump to label %s\n", i, fix(immCode[i].z));
             break;
          case CALL:
-            printf("%d: call -, -, %s\n", i, fix(immCode[i].z));
-            //printf("%d: Call unit %s\n", i, fix(immCode[i].z));
+            gen("%d: call -, -, %s\n", i, fix(immCode[i].z));
+            //gen("%d: Call unit %s\n", i, fix(immCode[i].z));
             break;
          case PAR:
-            printf("%d: pass %s, %s, -\n", i, fix(immCode[i].x), fix(immCode[i].y));
-            //printf("%d: Pass parameter %s with mode %s\n", i, fix(immCode[i].x), fix(immCode[i].y));
+            gen("%d: pass %s, %s, -\n", i, fix(immCode[i].x), fix(immCode[i].y));
+            //gen("%d: Pass parameter %s with mode %s\n", i, fix(immCode[i].x), fix(immCode[i].y));
             break;
          case RET:
-            printf("%d: ret, -, -, -\n", i);
+            gen("%d: ret, -, -, -\n", i);
             break;
          case RETV:
-            printf("%d: retv, %s, -, -\n", i, fix(immCode[i].x));
+            gen("%d: retv, %s, -, -\n", i, fix(immCode[i].x));
             break;
          default:
-            printf("[Error] Unknown imm command\n");
+            internal("[Error] Unknown imm command\n");
             break; 
       }
    }

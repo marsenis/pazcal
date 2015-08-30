@@ -241,6 +241,14 @@ SymbolEntry * newVariable (const char * name, Type type)
         e->u.eVariable.type = type;
         type->refCount++;
         currentScope->negOffset -= sizeOfType(type, true);
+
+        /*
+         * For local arrays we must also allocate
+         * a pointer to the location of the first element
+         */
+        if (type->kind == TYPE_ARRAY)
+           currentScope->negOffset-=8;
+
         e->u.eVariable.offset = currentScope->negOffset;
     }
     return e;

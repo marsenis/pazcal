@@ -21,7 +21,7 @@ char cmdModifiers[] = { 'l', 'b', 'b', 'q', 'd' };
 
 #define REGS 13
 enum regs { AX, BX, CX, DX, SI, DI, BP, SP, R8, R9, R10, R13, R14 };
-char regName[DATATYPES][REGS][5] =
+char regName[DATATYPES][REGS][6] =
 {
    { "%eax", "%ebx", "%ecx", "%edx", "%esi", "%edi", "%ebp", "%esp", "%r8d", "%r9d", "%r10d", "%r13d", "%r14d"},
    {  "%al",  "%bl",  "%cl",  "%dl", "%sil", "%dil", "%bpl", "%spl", "%r8b", "%r9b", "%r10b", "%r13b", "%r14b"},
@@ -282,7 +282,6 @@ void store(enum regs R, opts x) {
 
 void TG_quad(immType q) {
    SymbolEntry *s;
-   void (*f)(enum regs, opts);
    Type rt;
    enum dataTypes t;
    int cnt = 0, size;
@@ -299,12 +298,28 @@ void TG_quad(immType q) {
          /* Count how many bytes of stack to allocate */
          cnt = 8; // Add 8 bytes for the bp pointer
          for (s = q.x.scope->entries; s != NULL; s = s->nextInScope)
-            if (s->entryType == ENTRY_VARIABLE || s->entryType == ENTRY_TEMPORARY)
-               cnt += sizeOfType(getSymType(s), true);
+            if (s->entryType == ENTRY_VARIABLE || s->entryType == ENTRY_TEMPORARY) {
+               rt = getSymType(s);
+               cnt += sizeOfType(rt, true);
+
+              /*
+               * For local arrays we must also allocate
+               * a pointer to the location of the first element
+               */
+               if (rt->kind == TYPE_ARRAY)
+                  cnt++;
+            }
+
 
          gen("\tpushq\t%%rbp\n");
          gen("\tmovq\t%%rsp, %%rbp\n");
          gen("\tsubq\t$%d,%%rsp\n", cnt);
+
+         for (s = q.x.scope->entries; s != NULL; s = s->nextInScope)
+            if (s->entryType == ENTRY_VARIABLE && getSymType(s)->kind == TYPE_ARRAY) {
+               gen("\tleaq\t%d(%%rbp), %%rax\n", s->u.eVariable.offset+8);
+               gen("\tmovq\t%%rax, %d(%%rbp)\n", s->u.eVariable.offset);
+            }
 
          break;
       case ENDU:
@@ -331,17 +346,11 @@ void TG_quad(immType q) {
          while (rt->kind == TYPE_ARRAY || rt->kind == TYPE_IARRAY)
             rt = rt->refType;
 
-         gen("\tmovl\t$%d, %s\n", sizeOfType(rt, false), reg(CX, INT));
-         gen("\timul%c\t%s, %s\n", cmd(POINTER), reg(CX, POINTER), reg(AX, POINTER));
+         gen("\tmovl\t$%d, %s\n", sizeOfType(rt, false), reg(R10, INT));
+         gen("\timul%c\t%s, %s\n", cmd(POINTER), reg(R10, POINTER), reg(AX, POINTER));
 
-         // Save CX
-         gen("\tpushq\t%s\n", reg(CX, POINTER));
-
-         loadAddr(CX, q.x);
-         gen("\tadd%c\t%s, %s\n", cmd(POINTER), reg(CX, POINTER), reg(AX, POINTER));
-
-         // Restore CX
-         gen("\tpopq\t%s\n", reg(CX, POINTER));
+         load(R10, q.x);
+         gen("\tadd%c\t%s, %s\n", cmd(POINTER), reg(R10, POINTER), reg(AX, POINTER));
 
          store(AX, q.z);
          break;

@@ -838,23 +838,41 @@ opt_format_expr : /* Empty */ { $$.t = typeVoid; } | ',' expr { $$ = $2; } ;
       filename    : Read from file "filename"
 */
 int main(int argc, char *argv[]) {
-   char asmfilename[100];
+   char asmfilename[200];
+   char immfilename[200];
+   char objfilename[200];
+   char execfilename[200];
+   char base[200];
+
+   linecount = 1;
 
    if (argc != 2) { printf("Usage: %s [-f | filename]\n", argv[0]); exit(1); }
 
-   linecount = 1;
    if (strcmp(argv[1], "-f") == 0) filename = "a";
    else {
       filename = argv[1];
       FILE *f = fopen(filename, "r");
 
-      /* Assembly File */
-      sprintf(asmfilename, "%s.s", filename);
-      asmfile = fopen(asmfilename, "w");
-
       if (!f) { fprintf(stderr, "No such file or directory\n"); exit(2); }
-      
       yy_switch_to_buffer(yy_create_buffer(f, YY_BUF_SIZE));
+
+      rm_filename_ext(filename, base);
+
+      /* Intermediate Code File */
+      sprintf(immfilename, "%s.imm", base);
+      immfile = fopen(immfilename, "w");
+      if (!immfile) { fprintf(stderr, "Cannot open %s\n", immfilename); exit(2); }
+
+      /* Assembly File */
+      sprintf(asmfilename, "%s.s", base);
+      asmfile = fopen(asmfilename, "w");
+      if (!asmfile) { fprintf(stderr, "Cannot open %s\n", asmfilename); exit(2); }
+
+      /* Object file */
+      sprintf(objfilename, "%s.o", base);
+
+      /* Executable file */
+      sprintf(execfilename, "%s", base);
    }
 
    TG_Preamble();
@@ -866,7 +884,6 @@ int main(int argc, char *argv[]) {
 
    if (yyparse()) exit(1);
 
-   printf("\t--- INTERMEDIATE CODE ---\n");
    printImm();
 
    TG_Generate();
@@ -874,6 +891,7 @@ int main(int argc, char *argv[]) {
    closeScope();
    closeScope();
 
+   fclose(immfile);
    fclose(asmfile);
 
    // Temporary
@@ -884,8 +902,16 @@ int main(int argc, char *argv[]) {
    system(cmd);
    */
 
+   sprintf(cmd, "as -o %s %s\n", objfilename, asmfilename);
+   system(cmd);
+
+   sprintf(cmd, "gcc -w -O2 -o %s %s %s -lm\n", execfilename, objfilename, "pazcallib/pazcallib.o");
+   system(cmd);
+
+   /*
    sprintf(cmd, "cp %s pazcallib/target.s && cd pazcallib && make && cd ..\n", asmfilename);
    system(cmd);
+   */
 
    return 0;
 }
