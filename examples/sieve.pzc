@@ -1,0 +1,29 @@
+const int MAX = 100000;
+bool isprime[MAX+5];
+int n;
+
+PROGRAM sieve() {
+   do {
+      WRITE("Give upper bound: ");
+      n = READ_INT();
+   } while (n < 2 || n > MAX);
+
+   int i;
+
+   FOR (i, 2 TO n)
+      isprime[i] = true;
+
+   i = 2;
+   while (i*i <= n) {
+      int j;
+      FOR (j, i*i TO n STEP i)
+         isprime[j] = false;
+      i++;
+   }
+
+   FOR (i, 2 TO n)
+      if (isprime[i])
+         WRITE(FORM(i, 5));
+
+   WRITELN();
+}

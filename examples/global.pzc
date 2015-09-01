@@ -1,0 +1,16 @@
+int x[15];
+
+PROGRAM global() {
+   int y[15], i;
+
+   FOR (i, 0 TO 14)
+      x[i] = i;
+
+   FOR (i, 0 TO 14)
+      y[i] = x[14 - i];
+
+   FOR (i, 14 DOWNTO 0)
+      WRITE(y[i], " ");
+   
+   WRITELN();
+}

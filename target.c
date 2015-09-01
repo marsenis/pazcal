@@ -195,7 +195,7 @@ void loadAddr(enum regs R, opts x) {
                break;
             case ENTRY_VARIABLE:
                if (s->nestingLevel == 2) // Global Variable
-                  gen("\tleaq\t$%s(%%rip), %s\n", s->id, reg(R, POINTER));
+                  gen("\tleaq\t%s(%%rip), %s\n", s->id, reg(R, POINTER));
                else                      // Local Variable
                   gen("\tleaq\t%d(%%rbp), %s\n", s->u.eVariable.offset, reg(R, POINTER));
                break;
@@ -285,6 +285,7 @@ void TG_quad(immType q) {
    Type rt;
    enum dataTypes t;
    int cnt = 0, size;
+   void (*f)(enum regs, opts);
    static int parcnt = 0, argStackSize = 0;
    static opts ret;
 
@@ -296,20 +297,22 @@ void TG_quad(immType q) {
          gen("%s:\n", currentFunc->id);
 
          /* Count how many bytes of stack to allocate */
+         cnt = -q.x.scope->negOffset;
+         cnt += 8; // Add 8 bytes for the bp pointer
+
+         /*
          cnt = 8; // Add 8 bytes for the bp pointer
          for (s = q.x.scope->entries; s != NULL; s = s->nextInScope)
             if (s->entryType == ENTRY_VARIABLE || s->entryType == ENTRY_TEMPORARY) {
                rt = getSymType(s);
                cnt += sizeOfType(rt, true);
 
-              /*
-               * For local arrays we must also allocate
-               * a pointer to the location of the first element
-               */
+               // For local arrays we must also allocate
+               // a pointer to the location of the first element
                if (rt->kind == TYPE_ARRAY)
                   cnt++;
             }
-
+         */
 
          gen("\tpushq\t%%rbp\n");
          gen("\tmovq\t%%rsp, %%rbp\n");
@@ -349,7 +352,10 @@ void TG_quad(immType q) {
          gen("\tmovl\t$%d, %s\n", sizeOfType(rt, false), reg(R10, INT));
          gen("\timul%c\t%s, %s\n", cmd(POINTER), reg(R10, POINTER), reg(AX, POINTER));
 
-         load(R10, q.x);
+         if (q.x.content.variable->nestingLevel == 2) // Global array
+            loadAddr(R10, q.x);
+         else                                         // Local array
+            load(R10, q.x);
          gen("\tadd%c\t%s, %s\n", cmd(POINTER), reg(R10, POINTER), reg(AX, POINTER));
 
          store(AX, q.z);
@@ -460,10 +466,16 @@ void TG_quad(immType q) {
 
                gen("\tsubq\t$%d, %%rsp\n", size);
 
-               if (parcnt < 6)
-                  load(args[parcnt], q.x);
+               f = load;
+               if (q.x.type == VAR
+                && q.x.content.variable->entryType == ENTRY_VARIABLE
+                && q.x.content.variable->nestingLevel == 2) // Global variable array
+                  f = loadAddr;
 
-               load(AX, q.x);
+               if (parcnt < 6)
+                  f(args[parcnt], q.x);
+
+               f(AX, q.x);
                gen("\tmov%c\t%s, (%%rsp)\n", cmd(t), reg(AX, t));
                break;
             case PASS_BY_REFERENCE:
@@ -511,7 +523,7 @@ void initGlobal(immType q) {
       internal("\r[target.c]:TG_Generate: Found non assignment command in global scope");
    if (q.z.type != VAR)
       internal("\r[target.c]:TG_Generate: Assignment to non-variable in global scope");
-   if (q.x.type != VAR && q.x.content.variable->entryType != ENTRY_CONSTANT)
+   if (q.x.type != CONST && (q.x.type != VAR || q.x.content.variable->entryType != ENTRY_CONSTANT))
       internal("\r[target.c]:TG_Generate: rvalue in global initialization is not a constant");
 
    s = q.z.content.variable;
@@ -523,21 +535,25 @@ void initGlobal(immType q) {
    gen("\t.size\t%s, %d\n", s->id, sizeOfType(getSymType(s), true));
    gen("%s:\n", s->id);
 
-   s = q.x.content.variable;
-   switch (s->u.eConstant.type->kind) {
-      case TYPE_INTEGER:
-         gen("\t.long\t%d\n", s->u.eConstant.value.vInteger);
-         break;
-      case TYPE_CHAR:
-         gen("\t.byte\t%d\n", s->u.eConstant.value.vChar);
-         break;
-      case TYPE_BOOLEAN:
-         gen("\t.byte\t%d\n", s->u.eConstant.value.vBoolean);
-         break;
-      case TYPE_REAL:
-         break;
-      default:
-         internal("\r[target.c]:initGlobal: invalid type in global variable initialization");
+   if (q.x.type == CONST) { // It's a global array
+      gen("\t.zero\t%d\n", sizeOfType(getSymType(s), true));
+   } else {
+      s = q.x.content.variable;
+      switch (s->u.eConstant.type->kind) {
+         case TYPE_INTEGER:
+            gen("\t.long\t%d\n", s->u.eConstant.value.vInteger);
+            break;
+         case TYPE_CHAR:
+            gen("\t.byte\t%d\n", s->u.eConstant.value.vChar);
+            break;
+         case TYPE_BOOLEAN:
+            gen("\t.byte\t%d\n", s->u.eConstant.value.vBoolean);
+            break;
+         case TYPE_REAL:
+            break;
+         default:
+            internal("\r[target.c]:initGlobal: invalid type in global variable initialization");
+      }
    }
 }
 

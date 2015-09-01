@@ -50,6 +50,7 @@ bool insideRoutine = false; // Used for generating intermediate code
    Type       t;
    Range      RAnge;
    loopContext LoopContext;
+   SymbolEntry *SE;
 
    Const      cnst;
 }
@@ -183,7 +184,10 @@ pub_var_init : T_id pub_opt_var_init
                   genQuad(ASG, Var(q), EMT, Var(p));
                }
              | T_id '[' const_expr ']' array_var_init
-               { newVariable($1, arrayTypeCheck($3, $5)); };
+               {
+                  SymbolEntry *p = newVariable($1, arrayTypeCheck($3, $5));
+                  genQuad(ASG, Cnst(0), EMT, Var(p));
+               };
 
 pub_opt_var_init : /* Empty */ { $$ = (Const) { varType, {0} }; }
                  | '=' const_expr  { $$ = $2; };
@@ -262,6 +266,7 @@ program_header : "PROGRAM" T_id '(' ')'
                     // TODO: Change "main" back to $2.
                     //       "main" is for easy linking
                     func = newFunction("main"); //newFunction($2);
+                    openScope();
                     endFunctionHeader(func, typeVoid);
                     insideRoutine = true;
                     //genQuad(UNIT, ( (opts) { VAR, (contentType) { .variable = func }, currentScope } ), EMT, EMT);
@@ -279,6 +284,7 @@ program : program_header
           { 
              backpatch($3.Next, nextQuad());
              genQuad(ENDU, Var(func), EMT, EMT);
+             closeScope();
           };
 
 type : "int"  { $$ = typeInteger; }
@@ -481,10 +487,10 @@ block : '{'
            /* TODO: Temporarily, only function blocks open a new scope.
                     Opening a scope in the midst of a routine is difficult
                     to handle in the target code generation stage */
+           openScope();
            if (insideRoutine) {
-              openScope();
               genQuad(UNIT, ( (opts) { VAR, (contentType) { .variable = func }, currentScope } ), EMT, EMT);
-              $<integer>$ = 1;
+              //$<integer>$ = 1;
               insideRoutine = false;
            } else
               $<integer>$ = 0;
@@ -492,9 +498,12 @@ block : '{'
         }
         opt_block '}'
         {
+#ifdef DEBUG_SYMBOL
+           printSymbolTable();
+#endif
            $$ = $3;
-           if ($<integer>2)
-              closeScope();
+           //if ($<integer>2)
+           closeScope();
         } ;
 opt_block : /* Empty */ { $$ = (rlvalue) { .t = NULL }; }
           | local_def opt_block { $$ = $2; }
@@ -519,24 +528,24 @@ stmt : ';'
           genQuad(JUMP, EMT, EMT, Cnst(nextQuad()+1));
           $$.Next = NULL;
        }
-     | l_value assign expr ';'
+     | l_value assign { $<SE>$ = findLvaluePlace($1); } expr ';'
        {
-          if (!assignmentCompatibleTypes($1.type, $3.t)) {
+          if (!assignmentCompatibleTypes($1.type, $4.t)) {
              error("type mismatch on assignment");
-             printMismatch($1.type, $3.t);
+             printMismatch($1.type, $4.t);
           }
           if ($2 != '=' && !arithmeticType($1.type))
              error("this assignment operator only works on arithmetic types");
 
-          p = findLvaluePlace($1);
+          p = $<SE>3; //findLvaluePlace($1);
 
-          if (equalType($3.t, typeBoolean))
-             $$ = genCodeBooleanExpr($3, p);
+          if (equalType($4.t, typeBoolean))
+             $$ = genCodeBooleanExpr($4, p);
           else {
              if ($2 != '=')
-                genQuad($2, Var(p), Var($3.Place), Var(p));
+                genQuad($2, Var(p), Var($4.Place), Var(p));
              else
-                genQuad(ASG, Var($3.Place), EMT, Var(p));
+                genQuad(ASG, Var($4.Place), EMT, Var(p));
 
              $$.Next = NULL;
           }
@@ -651,8 +660,9 @@ stmt : ';'
           Continues = pop(Continues);
 
           backpatch($9.Next, nextQuad());
-          if ($6.direction == 1) genQuad('+', Var($<LoopContext>8.t4), Var($<LoopContext>8.t3), Var($<LoopContext>8.t4));
-          else                   genQuad('-', Var($<LoopContext>8.t4), Var($<LoopContext>8.t3), Var($<LoopContext>8.t4));
+          //if ($6.direction == 1)
+          genQuad('+', Var($<LoopContext>8.t4), Var($<LoopContext>8.t3), Var($<LoopContext>8.t4));
+          //else                   genQuad('-', Var($<LoopContext>8.t4), Var($<LoopContext>8.t3), Var($<LoopContext>8.t4));
 
           genQuad(JUMP, EMT, EMT, Lbl($<LoopContext>8.LoopBeg));
 

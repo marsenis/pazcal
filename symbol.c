@@ -170,7 +170,7 @@ void openScope ()
 {
     Scope * newScope = (Scope *) new(sizeof(Scope));
 
-    newScope->negOffset = START_NEGATIVE_OFFSET;
+    //newScope->negOffset = START_NEGATIVE_OFFSET;
     newScope->parent    = currentScope;
     newScope->entries   = NULL;
 
@@ -178,6 +178,12 @@ void openScope ()
         newScope->nestingLevel = 1;
     else
         newScope->nestingLevel = currentScope->nestingLevel + 1;
+
+   /* Block Scopes should not reset negOffset */
+   if (newScope->nestingLevel > 4)
+      newScope->negOffset = currentScope->negOffset;
+   else
+      newScope->negOffset = START_NEGATIVE_OFFSET;
     
     currentScope = newScope;
 }
@@ -196,6 +202,9 @@ void closeScope ()
         e = next;
     }
     
+    if (currentScope->nestingLevel > 4)
+       currentScope->parent->negOffset = currentScope->negOffset;
+
     currentScope = currentScope->parent;
     //delete(t); // removed by marsenis
 }
