@@ -145,7 +145,9 @@ int READ_INT()
 
 bool READ_BOOL()
 {
-   /* TODO */
+   char s[100];
+   scanf("%s", s);
+   return strcmp(s, "true");
 }
 
 REAL READ_REAL()
@@ -158,7 +160,8 @@ REAL READ_REAL()
 void READ_STRING(int size, char s[])
 {
    fgets(s, size, stdin);
-   s[strlen(s)-1] = '\0';
+   if (s[strlen(s)-1] == '\n') s[strlen(s)-1] = '\0';
+   else s[strlen(s)] = '\0';
 }
 
 REAL arctan(REAL r)
