@@ -1,0 +1,7 @@
+PROGRAM cat () {
+    char a[200];
+    do {
+        READ_STRING(200, a);
+        WRITELN(a);
+    } while (a[0] != '\0');
+}

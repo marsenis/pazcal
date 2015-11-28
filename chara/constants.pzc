@@ -1,0 +1,7 @@
+const int N = 10, M = 1000;
+const int N2 = N * M;
+const char EOLN = '\n';
+
+PROGRAM foo () {
+    WRITE(N2, EOLN);
+}

@@ -1,0 +1,16 @@
+PROC hanoi (char source[], char target[], char auxiliary[], int rings) {
+
+	if (rings > 0) {
+		hanoi(source, auxiliary, target, rings-1);
+		WRITE(source, target, " ");
+		hanoi(auxiliary, target, source, rings-1);
+	}
+	
+}
+
+PROGRAM solve () {
+	int numberOfRings = READ_INT();
+	hanoi("l", "r", "m", numberOfRings);
+}
+
+

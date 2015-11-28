@@ -1,0 +1,10 @@
+FUNC REAL foo()
+{
+    return 4738.6;
+}
+
+PROGRAM foooo()
+{
+    REAL g = foo();
+    WRITE(g);
+}

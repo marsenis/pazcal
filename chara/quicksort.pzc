@@ -1,0 +1,54 @@
+
+PROC swap(int &x, int &y) {
+	
+	int tmp = x;
+	x = y;
+	y = tmp;
+	
+}
+
+FUNC int partition(int a[], int first, int last) {
+
+	int x = a[(first + last)/2];
+	int i = first, j = last;
+	
+	while (true) {
+		while (a[i] < x) i++;
+		while (x < a[j]) j--;
+		if (i >= j) 
+			break;
+		swap(a[i], a[j]);
+		i++;
+		j--;
+	}
+	return j;
+
+}
+
+PROC quicksort(int a[], int first, int last) {
+
+	int i;
+	
+	if (first >= last) return;
+	
+	i = partition(a, first, last);
+	quicksort(a, first, i);
+	quicksort(a, i+1, last); 
+
+}
+
+PROGRAM test() {
+
+    const int N = 10;
+	int i, a[N];
+	WRITESPLN("Give", N, "elements of an integer matrix");
+	FOR (i, 0 TO N-1) 
+		a[i] = READ_INT();
+	
+	quicksort(a, 0, N-1);
+	
+	FOR (i, 0 TO N-1)
+		WRITELN(a[i]);
+
+}
+

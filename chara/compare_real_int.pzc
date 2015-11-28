@@ -1,0 +1,124 @@
+PROGRAM foo()
+{
+    REAL z = 1.0;
+    if (z > 100)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z < 100)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    if (z >= 100)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z <= 100)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    if (z == 100)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z != 100)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    if (z > 0)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    if (z < 0)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z >= 0)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    if (z <= 0)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z == 0)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z != 0)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    z = -1.0;
+    if (z > 100)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z < 100)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    if (z >= 100)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z <= 100)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    if (z == 100)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z != 100)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    if (z > 0)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z < 0)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    if (z >= 0)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z <= 0)
+        WRITE("C");
+    else
+        WRITE("E");
+
+    if (z == 0)
+        WRITE("E");
+    else
+        WRITE("C");
+
+    if (z != 0)
+        WRITE("C");
+    else
+        WRITE("E");
+}

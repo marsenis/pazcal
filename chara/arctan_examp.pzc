@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    REAL x = 120.4562;
+    WRITE(arctan(x));
+}

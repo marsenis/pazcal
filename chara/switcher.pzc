@@ -1,0 +1,52 @@
+PROGRAM test() {
+		
+	int i, x;
+	i = READ_INT();
+	x = READ_INT();
+	switch (i) {
+		case 1:
+			{
+				switch (x) {
+					case 0:
+						WRITELN("x is zero");
+						break;
+					case 1:
+						WRITELN("x is one");
+						NEXT;
+					default:
+						WRITELN("x is greater than zero");
+						NEXT;
+				
+				}
+			
+			}
+			NEXT;
+		case 2:
+			{
+				switch (x) {
+					case 0:
+						WRITELN("x is zero");
+						break;
+					case 1:
+						WRITELN("x is one");
+						NEXT;
+					default:
+						WRITELN("x is greater than zero");
+						NEXT;
+				
+				}
+			
+			}
+			NEXT;
+		case 3:
+			WRITELN("Pff");
+			break;
+		default:
+			WRITELN("Ok so far");
+            break;
+	
+    }	
+}
+	
+	
+	

@@ -1,0 +1,10 @@
+PROGRAM foo () {
+    char a = 'x', b;
+    b = 'b' + 1;
+    WRITELN(a);
+    WRITELN(b + 1);;
+    WRITELN(FORM(a,6));
+    WRITELN(FORM(b,2));
+    WRITELN(FORM(a,12));
+    WRITELN(FORM(3.14,12));
+}

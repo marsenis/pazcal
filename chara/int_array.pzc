@@ -1,0 +1,6 @@
+PROGRAM foo()
+{
+    int x[5];
+    x[4] = 133;
+    WRITE(x[4]);
+}

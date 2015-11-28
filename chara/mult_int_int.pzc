@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    int x = 2, y = 666;
+    WRITE(x*y);
+}

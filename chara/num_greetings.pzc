@@ -1,0 +1,18 @@
+PROC hello() {
+
+	WRITELN("Hello world");
+
+}
+
+PROGRAM test() {
+
+	int i, n;
+	WRITE("Give the number of greetings and then press <enter>: ");
+	n = READ_INT();
+	if (n < 0)
+		WRITESPLN("The number", n, "is negative");
+	else
+		FOR (i, 1 TO n)
+			hello();
+
+}

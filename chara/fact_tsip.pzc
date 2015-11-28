@@ -1,0 +1,12 @@
+FUNC int fact_aux (int n, int acc) {
+    if (n == 0) return acc;
+    else return fact_aux(n - 1, acc * n);
+}
+
+FUNC int fact (int n) {
+    return fact_aux(n, 1);
+}
+
+PROGRAM foo () {
+    WRITELN(fact(READ_INT ()));
+}

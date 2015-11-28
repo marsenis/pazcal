@@ -1,0 +1,34 @@
+
+FUNC bool linear_search(int a[], int key) {
+	
+	int i;
+	bool ans = false;
+	FOR (i, 0 TO 9) 
+		ans = (a[i] == key) || ans;
+		
+	return ans;
+	
+}
+
+
+PROGRAM test() {
+	
+    const int N = 10;
+    int a[N];
+    //int a[10];
+	int i, key;
+	WRITESPLN("Give an array of", N, "elements.");
+	FOR (i, 0 TO N - 1) {
+		a[i] = READ_INT();
+	}
+	
+	WRITELN("Give an integer target for the search: ");
+	key = READ_INT();
+	
+	if (linear_search(a, key)) 
+		WRITELN("Found!");
+	else
+		WRITELN("Not found :(");
+	
+	
+}

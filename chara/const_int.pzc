@@ -1,0 +1,7 @@
+PROGRAM foo()
+{
+    const int x = 7;
+    const int y = 9;
+    int z = x + y;
+    WRITE(z);
+}

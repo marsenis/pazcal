@@ -1,0 +1,8 @@
+PROGRAM foo()
+{
+    bool x[2];
+    x[1] = false;
+    x[0] = true;
+    x[1] = x[0];
+    WRITE(x[1]);
+}

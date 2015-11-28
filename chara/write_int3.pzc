@@ -1,0 +1,4 @@
+PROGRAM foo()
+{
+    WRITE(87654321);
+}

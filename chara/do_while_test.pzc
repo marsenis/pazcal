@@ -1,0 +1,18 @@
+PROGRAM test() {
+	
+	int x;
+	do {
+		x = READ_INT();
+		if (x < 42)
+			continue;
+		else
+			if (x == 42)
+				break;
+		
+		WRITELN("Come on!");
+	}
+	while (true);
+	
+	WRITELN("Well done!");
+	
+}

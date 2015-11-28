@@ -1,0 +1,6 @@
+PROGRAM foo()
+{
+    REAL x = 3.14;
+    int y = ROUND(x);
+    WRITE(y);
+}

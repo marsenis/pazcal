@@ -1,0 +1,8 @@
+PROGRAM foo()
+{
+    int i;
+    FOR(i, 0 TO 9) {
+        int x = i;
+        WRITE(x);
+    }
+}

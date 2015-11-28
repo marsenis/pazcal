@@ -1,0 +1,14 @@
+FUNC int fact(int y)
+{
+    if (y < 2)
+        return y;
+    else 
+        return y * fact(y-1);
+}
+
+
+PROGRAM funny()
+{
+    WRITE(fact(10));
+}
+

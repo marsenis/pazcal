@@ -1,0 +1,10 @@
+PROGRAM for_if()
+{
+    int a[2];
+    a[0] = 4;
+    a[1] = 5;
+    int j;
+    FOR(j, 0 TO 1)
+        if (a[j] == 5)
+            WRITE("CORRECT");
+}

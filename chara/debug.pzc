@@ -1,0 +1,18 @@
+PROGRAM foo () {
+    const int DEBUG = 2;
+
+    if (DEBUG > 1) {
+        WRITE("ok1\n");
+    }
+
+    const bool D = true;
+
+    if (not D) {
+        WRITE("ok2\n");
+    }
+
+    int verb = 3;
+    if (verb < 4) {
+        WRITE("ok3\n");
+    }
+}

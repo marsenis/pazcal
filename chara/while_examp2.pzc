@@ -1,0 +1,9 @@
+PROGRAM fo()
+{
+    int i = -5;
+    while (i > 0) {
+        WRITE("ERROR");
+        return;
+    }
+    WRITE("CORRECT");
+}

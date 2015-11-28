@@ -1,0 +1,16 @@
+PROGRAM foo()
+{
+    REAL x = 0.14159;
+    int i = 100000;
+    x = x * i;
+
+    if (x < 14158.8)
+        WRITE("E");
+    else
+        WRITE("C");
+    
+    if (x > 14159.1)
+        WRITE("E");
+    else
+        WRITE("C");
+}

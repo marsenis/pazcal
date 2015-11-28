@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    int x = 1;
+    WRITE(x+1);
+}

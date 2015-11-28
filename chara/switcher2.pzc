@@ -1,0 +1,20 @@
+PROGRAM test() {
+
+	char x = getchar();
+	WRITELN();
+	switch (x) {
+		case 'a':
+            WRITE('a');
+			NEXT;
+		case 'b':
+            WRITE('b');
+			NEXT;
+		case 'c':
+            WRITE('c');
+			NEXT;
+		default:
+            WRITE("default");
+			break;
+	}
+
+}

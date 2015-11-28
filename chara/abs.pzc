@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    int x = -5;
+    WRITELN(abs(x));
+}

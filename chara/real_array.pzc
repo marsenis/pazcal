@@ -1,0 +1,45 @@
+const int N = 3, M = 4;
+
+PROC max_rows(REAL x[N][M]) {
+
+	int i, j;
+	REAL max;
+	
+	FOR (i, 0 TO N - 1) {
+		max = x[i][0];
+		FOR (j, 0 TO M - 1)
+			if (max < x[i][j])
+				max = x[i][j];
+	}
+    WRITE(max);
+	
+}
+
+PROC min_collumns(REAL x[N][M]) {
+
+	int i, j;
+	REAL min;
+	
+	FOR (j, 0 TO M - 1) {
+		min = x[0][j];
+		FOR (i, 0 TO N - 1)
+			if (min > x[i][j])
+				min = x[i][j];
+	}
+    WRITE(min);
+}
+
+REAL a[N][M];
+
+PROGRAM test() {
+
+	int i, j;
+	
+    FOR (i, 0 TO N - 1)
+		FOR (j, 0 TO M - 1) {
+			a[i][j] = READ_REAL();
+		}
+	
+	max_rows(a);
+	min_collumns(a); 
+}

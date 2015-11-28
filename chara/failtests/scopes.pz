@@ -1,0 +1,9 @@
+PROC f(char y[])
+{
+    int j;
+}
+
+PROGRAM foo()
+{
+    j = 5;
+}

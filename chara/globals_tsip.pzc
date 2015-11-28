@@ -1,0 +1,22 @@
+int x = 4;
+int y = 10, z;
+int w[10];
+char a[5];
+
+PROC setx();
+
+PROGRAM foo () {
+    setx();
+    WRITESPLN("x:", x, "w:", w[2], a);
+}
+
+PROC setx () {
+    x *= y; //40
+    z += 2; //2
+    x += z; //42
+    w[2] = w[1] + 5; //5
+    a[0] = 'z';
+    a[1] += 'a';
+    a[2] += 'a';
+    a[3] = 'f';
+}

@@ -1,0 +1,7 @@
+PROGRAM foo()
+{
+    REAL y = 12.14;
+    REAL z = -77892.12;
+    REAL w = y * z;
+    WRITE(w);
+}

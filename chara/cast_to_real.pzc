@@ -1,0 +1,10 @@
+PROC foo(REAL y)
+{
+    WRITE(y);
+}   
+
+PROGRAM fooo()
+{
+    int x = 5;
+    foo(x);
+}

@@ -1,0 +1,30 @@
+PROGRAM test() {
+	
+	int k = READ_INT();
+	char c = getchar();
+	switch (k) {
+		case 1:
+			WRITELN("Case 1");
+			break;
+		case 2:
+			WRITELN("Case 2");
+			break;
+		default:
+			WRITELN("Other kind of shit");
+			break;
+	}
+	
+//	char c = getchar();
+   	WRITELN();
+	switch (c) {
+		case 'L':
+			WRITELN("Leonidas");
+			break;
+		case 'D':
+			WRITELN("Dimitra");
+			break;
+		default:
+			WRITELN("Other name");
+			break;
+	}
+}

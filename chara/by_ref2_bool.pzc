@@ -1,0 +1,16 @@
+PROC foooo(bool &x)
+{
+    x = false;
+}
+
+PROC fooo(bool &x)
+{
+    foooo(x);
+}
+
+PROGRAM foo()
+{
+    bool x = true;
+    fooo(x);
+    WRITE(x);
+}

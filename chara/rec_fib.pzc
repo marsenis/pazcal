@@ -1,0 +1,30 @@
+/* Mutually recursive fibonacci */
+
+FUNC int f2(int n);
+
+FUNC int f1(int n) {
+
+	if (n == 0)
+		return 1;
+	else
+		return f1(n-1) + f2(n-1);
+
+}
+
+FUNC int f2(int n) {
+	
+	if (n == 0)
+		return 0;
+	else
+		return f1(n-1);
+
+}
+
+PROGRAM test() {
+	
+	int n;
+	WRITE("Which fibonacci do you want: ");
+	n = READ_INT();
+	WRITESPLN("\nYour fibonacci is", f1(n));
+
+}

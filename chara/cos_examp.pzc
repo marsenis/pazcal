@@ -1,0 +1,6 @@
+PROGRAM foo()
+{
+    REAL y = 124;
+    REAL x = cos(y);
+    WRITE(x);
+}

@@ -1,0 +1,4 @@
+PROGRAM f()
+{
+    WRITE(round(-298428.45));
+}

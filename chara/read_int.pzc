@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    int x = READ_INT();
+    WRITE(x);
+}

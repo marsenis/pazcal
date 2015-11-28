@@ -1,0 +1,6 @@
+PROGRAM foo()
+{
+    REAL x = 663.1;
+    x +=6.5;
+    WRITE(FORM(x, 10, 6));
+}

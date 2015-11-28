@@ -1,0 +1,8 @@
+PROGRAM foo()
+{
+    int i = -5;
+    if (i > 0)
+        WRITE("ERROR");
+    else
+        WRITE("CORRECT");
+}

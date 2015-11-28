@@ -1,0 +1,6 @@
+PROGRAM foo()
+{
+    int x = 0;
+    REAL y = sin(x);
+    WRITE(y);
+}

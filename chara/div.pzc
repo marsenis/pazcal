@@ -1,0 +1,6 @@
+PROGRAM primes()
+{
+    int z = 25;
+    WRITE("res = ", z/2);
+}
+

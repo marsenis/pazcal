@@ -1,0 +1,5 @@
+PROGRAM foo ()
+{
+    const int x=2;
+    WRITE(x);
+}

@@ -1,0 +1,14 @@
+int y = 1;
+int x = y * 5;
+int z[10], w[20];
+
+PROC fooo()
+{
+    WRITE(x);
+}
+
+PROGRAM foo()
+{
+    fooo();
+    WRITE(x);
+}

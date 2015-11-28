@@ -1,0 +1,12 @@
+PROC foo(int &x)
+{
+    x = x + 1;
+}
+
+
+PROGRAM fooo()
+{
+    int x = 5;
+    foo(x);
+    WRITE(x);
+}

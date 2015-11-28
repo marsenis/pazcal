@@ -1,0 +1,22 @@
+FUNC int gcd(int a, int b) {
+
+	while (a > 0 and b > 0)
+		if (a > b) 
+			a = a % b;
+		else
+			b = b % a;
+	return (a+b);
+	
+}
+
+PROGRAM test() {
+
+	int x, y;
+	WRITELN("Please give two integers");
+	WRITE("First integer: ");
+	x = READ_INT();
+	WRITE("Second integer: ");
+	y = READ_INT();
+	WRITESPLN("Their gcd is", gcd(x, y));
+
+}

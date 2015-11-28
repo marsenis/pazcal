@@ -1,0 +1,6 @@
+PROGRAM foo()
+{
+    char x[10];
+    strcpy(x, "hello!");
+    WRITE(x);
+}

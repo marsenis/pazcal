@@ -1,0 +1,11 @@
+FUNC REAL foo(REAL x)
+{
+    return x;
+}
+
+PROGRAM fooo()
+{
+    REAL x = 4.14;
+    REAL y = x - 1.0;
+    WRITE(y);
+}

@@ -1,0 +1,13 @@
+const int M = 42;
+const REAL q = 20.126; 
+
+PROGRAM test() {
+
+	int x = 1256 * 128 + (M % 4) * 17 + 11 * M * M;
+	REAL y = 4.145612 * 0.120031 + q  * q - x / 12.00531;
+	char w = 'c' + 1;
+	if (true && true)
+		WRITELN("DONE");
+	WRITESPLN(x, FORM(y, 0, 8), w);
+
+}

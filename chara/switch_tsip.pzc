@@ -1,0 +1,10 @@
+PROGRAM foo () {
+    switch (READ_INT()) {
+        case 0: WRITE("ZERO\n"); break;
+        case 1: 
+        case 1 + 1: WRITE("ONE\n"); WRITE("OR MAYBE TWO\n"); break;
+        case 3 + 4: WRITE("SEVEN is then new THREE\n"); NEXT;
+        case 2 + 1: WRITE("THREE\n"); break;
+        default: WRITE("cant count above 3, sorry\n"); break;
+    }
+}

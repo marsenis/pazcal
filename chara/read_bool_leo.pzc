@@ -1,0 +1,15 @@
+bool flag = false;
+PROGRAM test() {
+
+	int x = 42;
+	flag = READ_BOOL();
+	if (flag) {
+		x++;
+		WRITELN(x);
+	}
+	else {
+		x--;
+		WRITELN(x);
+	}
+
+}

@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    REAL y = 1.14, x = 5.56;
+    WRITE(x*y);
+}

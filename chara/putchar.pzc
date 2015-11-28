@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    char x = 'a';
+    putchar(x);
+}

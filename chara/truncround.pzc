@@ -1,0 +1,10 @@
+PROGRAM foo () {
+    WRITESPLN("expect  3:", FORM(trunc(3.2),3));
+    WRITESPLN("expect  3:", trunc(3.9999));
+    WRITESPLN("expect -3:", trunc(-3.2));
+    WRITESPLN("expect -3:", trunc(-3.999999));
+    WRITESPLN("expect  3:", round(3.2));
+    WRITESPLN("expect  3:", round(2.5));
+    WRITESPLN("expect -3:", round(-3.2));
+    WRITESPLN("expect -3:", round(-2.5));
+}

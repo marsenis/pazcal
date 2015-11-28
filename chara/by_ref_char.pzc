@@ -1,0 +1,11 @@
+PROC foo(char &y)
+{
+    y = y + 2;
+}
+
+PROGRAM fooo()
+{
+    char y = 'a';
+    foo(y);
+    WRITE(y);
+}

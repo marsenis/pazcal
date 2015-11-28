@@ -1,0 +1,14 @@
+
+PROGRAM foo()
+{
+    bool mark[10];
+    int i;
+    mark[0] = false;
+    FOR(i, 1 TO 9) {
+        mark[i] = !mark[i-1];
+    }
+
+    FOR(i, 0 TO 9)
+        WRITE(mark[i], " ");
+
+}

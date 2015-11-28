@@ -1,0 +1,42 @@
+FUNC bool isPrime(int n) {
+
+	int tmp = TRUNC(sqrt(n));
+	while (tmp > 1) {
+		if (n % tmp == 0)
+			return false;
+		else
+			tmp--;	
+	}
+	
+	return true;
+
+}
+
+FUNC int next_prime(int p) {
+
+	int tmp = p + 1;
+	while (not isPrime(tmp))
+		tmp++;
+	
+	return tmp;
+
+}
+
+PROGRAM test() {
+	
+	int n, prime = 2;
+	n = READ_INT();
+	
+	while (n != prime) {
+	
+		if (n % prime == 0) {
+			WRITELN(prime);
+			n /= prime;
+		}
+		else 
+			prime = next_prime(prime);			
+						
+	}
+	WRITELN(prime);
+	
+}

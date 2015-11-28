@@ -1,0 +1,6 @@
+PROGRAM foo()
+{
+    char x = 'A';
+    char y = 'y';
+    WRITE(y%x);
+}

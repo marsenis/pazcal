@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    REAL x = 5412.56;
+    WRITE(ln(x));
+}

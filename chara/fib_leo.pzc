@@ -1,0 +1,23 @@
+PROC fib(int n) {
+
+    int i = 0, a = 0, b = 1, tmp;
+    while (i < n) {
+        tmp = a;
+        a = b;
+        b = tmp + b;
+        i++;
+    }
+    WRITESPLN("Your number is", a);
+    WRITELN();
+    
+}
+    
+PROGRAM test() {
+	
+	int n;
+	WRITE("Which fibonacci number do you want?:");
+	n = READ_INT();
+	fib(n);
+	WRITELN("Bye bye!");
+	
+}

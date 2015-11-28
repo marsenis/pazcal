@@ -1,0 +1,10 @@
+PROC f(int z[], int n)
+{
+    WRITE(n);
+}
+
+PROGRAM foo()
+{
+    int x[1];
+    f(x, 45);
+}

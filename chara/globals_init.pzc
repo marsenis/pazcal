@@ -1,0 +1,13 @@
+int x[5];
+REAL y;
+char z = 'D';
+bool w;
+
+PROGRAM test() {
+
+	WRITESPLN(y, z, w);
+	int i;
+	FOR (i, 0 TO 4)
+		WRITESP(x[i]);
+
+}

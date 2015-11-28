@@ -1,0 +1,17 @@
+FUNC REAL double (REAL x) {
+    return 2 * x;
+}
+
+FUNC int doubleint (int x) {
+    return 2 * x;
+}
+
+FUNC char inc (char x) {
+    return x + 1;
+}
+
+PROGRAM test () {
+    REAL x = 3.56;
+    int y = 7;
+    WRITESPLN(double(x), doubleint(y), inc('a'), FORM(x, 10, 5));
+}

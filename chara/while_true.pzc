@@ -1,0 +1,6 @@
+PROGRAM foo() {
+    while(true) {
+        WRITE(5);
+        break;
+    }
+}

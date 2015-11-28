@@ -1,0 +1,10 @@
+PROGRAM switching()
+{
+    int x;
+    switch (x) {
+        case 1:
+            while (true)
+               if (true) break;
+               break;
+    }
+}

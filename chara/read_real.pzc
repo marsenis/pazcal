@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    REAL y = READ_REAL();
+    WRITE(y);
+}

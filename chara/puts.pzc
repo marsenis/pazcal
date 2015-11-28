@@ -1,0 +1,4 @@
+PROGRAM foo()
+{
+    puts("Hello world!");
+}

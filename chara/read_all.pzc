@@ -1,0 +1,21 @@
+PROGRAM test()
+{		
+	int x = READ_INT();
+	int y = READ_INT();
+	WRITELN("Sum:", x + y);
+	WRITELN("Difference:", x - y);
+	WRITELN("Product:", x * y);
+	WRITELN("Division:", x / y);
+	WRITELN("Modulo:", x % y);
+	WRITELN();
+	
+	REAL z = READ_REAL();
+	REAL w = READ_REAL();
+	WRITELN("Sum:", z + w);
+	WRITELN("Difference:", z - w);
+	WRITELN("Product:", z * w);
+	WRITELN("Division:", z / w);	
+}
+	
+	
+	

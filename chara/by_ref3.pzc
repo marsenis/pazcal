@@ -1,0 +1,21 @@
+PROC f3(int &y)
+{
+    y += 12;
+}
+
+PROC foooo(int &x)
+{
+    f3(x);
+}
+
+PROC fooo(int &x)
+{
+    foooo(x);
+}
+
+PROGRAM foo()
+{
+    int x = 5;
+    fooo(x);
+    WRITE(x);
+}

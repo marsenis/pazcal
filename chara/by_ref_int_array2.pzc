@@ -1,0 +1,11 @@
+PROC f(int y[])
+{
+    y[5] = 35;
+}
+
+PROGRAM foo()
+{
+    int x[7];
+    f(x);
+    WRITE(x[5]);
+}

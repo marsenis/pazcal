@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    int x = 873262, y = 237; 
+    WRITE(x%y);
+}

@@ -1,0 +1,13 @@
+PROGRAM while_loop()
+{
+    int x = 1;
+    int n = 10;
+    int count = 0;
+
+    do {
+        count++;
+        x++;
+    } while (x <= n);
+
+    WRITE(count);
+}

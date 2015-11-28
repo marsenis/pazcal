@@ -1,0 +1,51 @@
+PROGRAM numberofdays () {
+
+	WRITELN("Hello there! Please write down a month!(1 for January, 2 for February, etc)");
+	int month = READ_INT();
+	int year = 2014;
+	if (month == 2){
+		WRITELN("Please write down the year.");
+		year = READ_INT();
+	}
+	int numdays = -1;
+	switch (month) {
+		case 1:
+			NEXT;
+		case 3:
+			NEXT;
+		case 5:
+			NEXT;
+		case 7:
+			NEXT;
+		case 8:
+			NEXT;
+		case 10:
+			NEXT;
+		case 12:
+			numdays=31;
+			break;
+		case 4:
+		case 6:
+		case 9:
+		case 11:
+			numdays=30;
+			break;
+		case 2:
+			if (((year % 4 == 0) and (year % 100 != 0)) or (year % 400 == 0)) {
+				numdays = 29;
+			}
+			else {
+				numdays = 28;
+			}
+			break;
+		default:
+			WRITELN("Not a valid month given...");
+			break;
+	}
+	if (numdays == -1) {
+		WRITELN("Try again with a number in range 1..12");
+	}
+	else{
+		WRITELN("Number of Days = ", numdays);
+	}
+}

@@ -1,0 +1,6 @@
+PROGRAM foo()
+{
+    char x = 'a';
+    REAL y = 1.14;
+    WRITE(x*y);
+}

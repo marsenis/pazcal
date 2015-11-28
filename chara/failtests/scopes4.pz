@@ -1,0 +1,9 @@
+PROC foo(int x)
+{
+    x++;
+}
+
+PROGRAM fooo()
+{
+    x +=5;
+}

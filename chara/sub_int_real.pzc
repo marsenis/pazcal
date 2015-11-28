@@ -1,0 +1,9 @@
+PROGRAM foo()
+{
+    int x = 55;
+    REAL y = 12.14;
+    REAL z = x - y;
+    x = -13;
+    z = z - x;
+    WRITE(z);
+}

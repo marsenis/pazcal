@@ -1,0 +1,9 @@
+PROGRAM foo () {
+    WRITELN("We double integers, except zero");
+    int x = READ_INT();
+    while (x != 0) {
+        WRITESPLN("u enter:", x, "we output:", 2 * x);
+        x = READ_INT();
+    };
+    WRITELN("bye");
+}

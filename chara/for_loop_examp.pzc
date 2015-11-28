@@ -1,0 +1,11 @@
+PROGRAM silly()
+{
+    bool x = true;
+    bool y = false;
+    int i,j;
+    FOR (i, 0 TO 10) {
+        j++;
+        i++;
+    }
+    WRITE(j);
+}

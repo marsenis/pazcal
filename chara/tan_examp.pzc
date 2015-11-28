@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    REAL x = 5.556;
+    WRITE(tan(x));
+}

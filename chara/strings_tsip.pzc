@@ -1,0 +1,8 @@
+PROGRAM a () {
+    char s[100];
+    strcpy(s, "hello world ");
+    char a[100];
+    READ_STRING(100, a);
+    strcat(s, a);
+    WRITESPLN(strlen(s), s);
+}

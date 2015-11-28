@@ -1,0 +1,7 @@
+PROGRAM foo()
+{
+    char x = 'c';
+    char y = 'a';
+    
+    WRITE(x/y);
+}

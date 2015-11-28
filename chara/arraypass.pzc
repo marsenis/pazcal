@@ -1,0 +1,10 @@
+PROC foo (int a[][4]) {
+    int x = a[2][3];
+    WRITELN(x);
+}
+
+PROGRAM test () {
+    int a[10][8][6][4];
+    a[1][2][2][3] = 42;
+    foo(a[1][2]);
+}

@@ -1,0 +1,7 @@
+PROGRAM f()
+{
+    WRITESP(round(3.14159),
+            round(-52.924),
+            round(239872.85),
+            round(-289429.49));
+}

@@ -1,0 +1,13 @@
+PROC foo(bool y[])
+{
+    y[0] = y[1];
+}
+
+PROGRAM fooo()
+{
+    bool x[2];
+    x[0] = false;
+    x[1] = true;
+    foo(x);
+    WRITE(x[0]);
+}

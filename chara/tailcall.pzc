@@ -1,0 +1,13 @@
+FUNC int five () {
+    int f[10];
+    return 5;
+}
+
+FUNC int ffive (int x) {
+    int a;
+    return (five ());
+}
+
+PROGRAM foo () {
+    WRITELN(ffive(2));
+}

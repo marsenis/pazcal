@@ -1,0 +1,45 @@
+PROC swap (int &x, int &y)
+{
+    int t = x; x = y; y = t;
+    return;
+}
+
+PROC bsort (int x[])
+{
+    int n = 16;
+    bool changed = true;
+    while (changed) {
+    changed = false;
+    int i;
+    FOR (i, 0 TO n-2)
+        if (x[i] > x[i+1]) 
+        {
+            swap(x[i], x[i+1]);
+            changed = true; 
+        }
+    }
+}
+
+PROC print(int x[])
+{
+    int k;
+    FOR (k, 0 TO 15) {
+        WRITE(x[k]);
+        WRITE(' ');
+    }
+}
+
+PROGRAM bubbles ()
+{
+    int seed = 65;
+    int i;
+    int x[16];
+    i = -seed;
+    FOR (i, 0 TO 15) {
+        seed = (seed * 137 + 221 + i) MOD 101;
+        x[i] = seed;
+    }
+//    print(x);
+    bsort(x);
+    print(x);
+}

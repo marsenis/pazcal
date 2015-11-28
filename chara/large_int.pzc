@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    int x = 1000000000;
+    WRITE(x);
+}

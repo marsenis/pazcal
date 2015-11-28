@@ -1,0 +1,37 @@
+PROGRAM opt() {
+	
+	int x = 42, y;
+	y = x + 0;
+	WRITELN(y); //42
+	y = 0 + y;
+	WRITELN(y); //42
+	y = x * 0;
+	WRITELN(y); //0
+	y = 0 * x;
+	WRITELN(y); //0
+	y = x * 1;
+	WRITELN(y); //42
+	y = 1 * x;
+	WRITELN(y); //42
+	
+	bool f = true, g;
+	g = f or true; //true
+	WRITELN(g);
+	g = f or false; //true
+	WRITELN(g);
+	g = f and true; //true
+	WRITELN(g);
+	g = f and false; //false
+	WRITELN(g);
+	
+	f = false;
+	g = f or true; //true
+	WRITELN(g);
+	g = f or false; //false
+	WRITELN(g);
+	g = f and true; //false
+	WRITELN(g); 
+	g = f and false; //false
+	WRITELN(g);
+	
+}

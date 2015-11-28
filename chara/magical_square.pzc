@@ -1,0 +1,104 @@
+const int N = 4;
+
+FUNC bool check_collumns(int a[N][N]) {
+
+	int i, j, sums[N], sum;
+	FOR (j, 0 TO N - 1) {
+		sum = 0;
+		FOR (i, 0 TO N - 1) 
+			sum += a[i][j];
+		sums[j] = sum;
+	}
+	
+	FOR (j, 1 TO N - 1)
+		if (sums[j-1] != sums[j])
+			return false;
+	
+	return true;
+
+}
+
+FUNC bool check_rows(int a[N][N]) {
+
+	int i, j, sums[N], sum;
+	FOR (i, 0 TO N - 1) {
+		sum = 0;
+		FOR (j, 0 TO N - 1) 
+			sum += a[i][j];
+		sums[i] = sum;
+	}
+	
+	FOR (i, 1 TO N - 1)
+		if (sums[i-1] != sums[i])
+			return false;
+	
+	return true;
+
+}
+
+
+FUNC bool check_first_diag(int a[N][N]) {
+	
+	int sum = 0, i, tmp = 0;
+	
+	FOR (i, 0 TO N - 1)
+		sum += a[i][0];
+		
+	FOR (i, 0 TO N - 1)
+		tmp += a[i][i];
+		
+	if (tmp == sum)
+		return true;
+	else
+		return false;
+	
+}
+
+FUNC bool check_sec_diag(int a[N][N]) {
+	
+	int sum = 0, i, tmp = 0;
+	
+	FOR (i, 0 TO N - 1)
+		sum += a[i][0];
+		
+	FOR (i, 0 TO N - 1)
+		tmp += a[i][N-i-1];
+		
+	if (tmp == sum)
+		return true;
+	else
+		return false;
+	
+}
+
+
+PROGRAM main() {
+
+	int i, j, a[N][N];
+	bool flag = true;
+	
+	FOR (i, 0 TO N - 1) {
+		FOR (j, 0 TO N - 1) {
+			a[i][j] = READ_INT();
+			if (a[i][j] < 0 || a[i][j] > N * N - 1) {
+				flag = false;
+				break;
+			}
+		}
+		if (!flag) break;
+	}
+	
+	
+	if (!flag)
+		WRITELN("\nError: Every integer should be between 0 and N^2 - 1");
+	else {
+	
+		flag = check_rows(a) && check_collumns(a) && check_first_diag(a) && check_sec_diag(a);
+		if (flag)
+			WRITELN("The given matrix is a magical square!");
+		else
+			WRITELN("The given matrix is not a magical square...");
+	
+	}
+
+}

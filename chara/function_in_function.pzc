@@ -1,0 +1,9 @@
+FUNC int foo(int x)
+{
+    return x + 1;
+}
+
+PROGRAM fooo()
+{
+    WRITE(foo(foo(foo(5))));
+}

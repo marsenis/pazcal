@@ -1,0 +1,7 @@
+PROGRAM f()
+{
+    WRITESP(trunc(3.14159),
+            trunc(-52.224),
+            trunc(239872.15),
+            trunc(-298429.11));
+}

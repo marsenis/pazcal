@@ -1,0 +1,15 @@
+PROGRAM foo () {
+    int x = READ_INT();
+    switch (x) {
+        case 40: WRITELN("FORTY"); break;
+        case 2: WRITELN("TWO"); break;
+        case 37: WRITELN("THSEVEN"); break;
+        case 100: WRITELN("BAM"); break;
+        case 5: WRITELN("FIVE"); break;
+        case -1: WRITELN("NEG"); break;
+        case 7: WRITELN("se7en"); break;
+        case 25: WRITELN("TFIVE"); break;
+        case 82: WRITELN("8TWO"); break;
+        default: WRITELN("def"); break;
+    }
+}

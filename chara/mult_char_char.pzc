@@ -1,0 +1,6 @@
+PROGRAM foo()
+{
+    char x = 'a', y = 'c';
+    char z = x*y - 50;
+    WRITE(z);
+}

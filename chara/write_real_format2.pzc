@@ -1,0 +1,4 @@
+PROGRAM foo()
+{
+    WRITE(FORM(663.14, 6, 5));
+}

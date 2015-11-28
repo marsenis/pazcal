@@ -1,0 +1,12 @@
+PROC foo(REAL &x)
+{
+    x = x + 1;
+}
+
+
+PROGRAM fooo()
+{
+    REAL x = 2.14;
+    foo(x);
+    WRITE(x);
+}

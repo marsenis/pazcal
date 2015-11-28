@@ -1,0 +1,10 @@
+FUNC int foo()
+{
+    return 28376487;
+}
+
+PROGRAM foooo()
+{
+    int x = foo();
+    WRITE(x);
+}

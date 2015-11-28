@@ -1,0 +1,10 @@
+PROGRAM foo () {
+    int x,y;
+    y = 7;
+    switch (y) {
+        case 7:  x = 7; NEXT;
+        case 3: x = 3; break;
+        default: x = 0; break;
+    }
+    WRITE(x);
+}

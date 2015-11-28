@@ -1,0 +1,11 @@
+PROGRAM funny()
+{
+    int x;
+    char y = 'a'; 
+    if (y >= 3) 
+        x = 1;
+    else 
+        x = 0;
+    WRITE(x);
+}
+

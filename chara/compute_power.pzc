@@ -1,0 +1,22 @@
+REAL x;
+int n;
+
+FUNC REAL power()
+{
+	REAL res = 1;
+	while (n > 0) {
+
+		if (n % 2 == 1)
+			res *= x;
+        
+		n /= 2;
+		x *= x; 
+	}
+	return res;
+}
+
+PROGRAM test() {
+    x = READ_REAL();
+	n = READ_INT();
+	WRITESPLN("The result is", FORM(power(), 1, 8));
+}

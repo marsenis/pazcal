@@ -1,0 +1,13 @@
+PROC fooo(int &x);
+
+PROGRAM foo()
+{
+    const int z = 8;
+    fooo(z);
+    WRITE(z);
+}
+
+PROC fooo(int &x)
+{
+    x++;
+}

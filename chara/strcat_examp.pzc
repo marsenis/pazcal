@@ -1,0 +1,7 @@
+PROGRAM foo()
+{
+    char x[16];
+    READ_STRING(6, x);
+    strcat(x, " world!");
+    WRITE(x);
+}

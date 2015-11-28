@@ -1,0 +1,5 @@
+PROGRAM foo()
+{  
+    REAL x = pi();
+    WRITE(x);
+}

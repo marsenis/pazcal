@@ -1,0 +1,5 @@
+PROGRAM fo()
+{
+    int x = 5;
+    int y = x + 1;
+}

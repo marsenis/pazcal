@@ -1,0 +1,4 @@
+PROGRAM foooo()
+{
+    WRITE("Hello, world!");
+}

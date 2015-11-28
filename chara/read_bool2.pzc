@@ -1,0 +1,5 @@
+PROGRAM foo()
+{
+    bool t = READ_BOOL();
+    WRITE(t);
+}

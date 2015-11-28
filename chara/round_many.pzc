@@ -1,0 +1,17 @@
+PROGRAM f()
+{
+    int i = ROUND(0.0);
+    WRITE(i);
+    i = ROUND(0.0);
+    WRITE(i);
+    i = ROUND(0.0);
+    WRITE(i);
+    i = ROUND(0.0);
+    WRITE(i);
+    i = ROUND(0.0);
+    WRITE(i);
+    i = ROUND(0.0);
+    WRITE(i);
+    i = ROUND(0.0);
+    WRITE(i);
+}

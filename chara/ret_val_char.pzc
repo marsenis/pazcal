@@ -1,0 +1,10 @@
+FUNC char foo()
+{
+    return 'g';
+}
+
+PROGRAM foooo()
+{
+    char g = foo();
+    WRITE(g);
+}

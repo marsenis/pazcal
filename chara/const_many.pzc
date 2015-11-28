@@ -1,0 +1,15 @@
+PROGRAM foo()
+{
+    const REAL x = 5.0;
+    REAL z = x * 5;
+    REAL w = z - x;
+    w = z - x;
+    w = z - x;
+    w = z - x;
+    w = z - x;
+    w = z - x;
+    w = z - x;
+    w = z - x;
+    w = z - x;
+    WRITE(w);
+}

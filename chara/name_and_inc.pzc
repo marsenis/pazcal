@@ -1,0 +1,28 @@
+FUNC int inc(int x) {
+	
+	x += 1;
+	return x;
+	
+}
+
+PROC bye(char name[]) {
+
+	WRITESPLN("Bye bye", name);
+
+}
+
+PROGRAM test() {
+	
+	char name[100];
+	WRITELN("Hello! Please give me your name:");
+	READ_STRING(100, name);
+	WRITELN("Give integer: ");
+	int i, x = READ_INT();
+	
+	FOR (i, 1 TO 5) 
+		x = inc(x);
+	
+	WRITESPLN("New integer:", x);
+	bye(name);
+}
+		 

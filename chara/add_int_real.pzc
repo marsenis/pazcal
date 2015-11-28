@@ -1,0 +1,6 @@
+PROGRAM foo()
+{
+    int x = 2;
+    REAL y = 1.14;
+    WRITE(x + y);
+}
