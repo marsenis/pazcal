@@ -1,0 +1,6 @@
+PROGRAM test() {
+	while (true) {
+		break;
+	}
+	WRITELN("Hello");
+}
